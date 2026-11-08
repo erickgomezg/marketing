@@ -114,3 +114,31 @@ Los valores dummy sólo sirvieron para validar sintaxis de Compose y no se guard
 - No había Node/npm instalados en el host. Se usaron imágenes Docker Node para instalación, build y ejecución de checks.
 - El lint detectó una función sin uso al retirar las acciones de perfil demo; se eliminó y el lint final pasó.
 - No se inició el Compose del proyecto ni se ejecutaron cambios sobre su SQL persistente. Se levantó un SQL Server desechable aislado para ejecutar la inicialización, el bootstrap y los flujos básicos de login.
+
+
+## Actualización de seguridad en rama dev
+
+En el primer bloque de endurecimiento de seguridad se realizaron estos cambios:
+
+- Se retiró el permiso general `GRANT EXECUTE ON SCHEMA::dbo` para `app_user`.
+- El inicializador revoca el permiso general heredado de ese esquema y concede `EXECUTE` de forma explícita sobre los procedimientos que invoca la API.
+- `usp_Auth_BootstrapAdministrator` permanece denegado para `app_user`; el bootstrap se ejecuta desde el servicio de inicialización aislado con la cuenta administrativa.
+- Se agregó validación de encabezado `Origin` para mutaciones autenticadas mediante cookie. Las solicitudes `GET`, `HEAD` y `OPTIONS` no se bloquean; clientes que usan exclusivamente Bearer token no dependen de cookies del navegador.
+- Se agregó limitación de solicitudes por IP para login, recuperación de contraseña, validación/aceptación de invitaciones y restablecimiento de contraseña.
+- Se configuró Express para confiar en el salto del proxy Nginx de Compose. `TRUST_PROXY_HOPS` permite ajustar esa cantidad y `APP_ALLOWED_ORIGINS` permite agregar orígenes exactos separados por coma.
+
+### Alcance y limitaciones conocidas
+
+El limitador actual mantiene contadores en memoria del proceso Node.js. Es adecuado como primera protección para la instancia única contemplada por el Compose actual, pero no coordina límites entre múltiples réplicas y se reinicia al reiniciar el backend. Antes de escalar horizontalmente debe sustituirse por un limitador distribuido respaldado por Redis. La limitación por IP tampoco reemplaza controles adicionales por cuenta ni monitoreo de abuso.
+
+La protección CSRF compara el origen exacto de las solicitudes mutables autenticadas mediante cookie. En despliegue, `APP_PUBLIC_URL` debe coincidir con el origen público real y `APP_ALLOWED_ORIGINS` debe contener sólo orígenes adicionales confiables. La terminación HTTPS y los encabezados del proxy deben configurarse correctamente.
+
+### Pruebas agregadas
+
+Se añadieron pruebas unitarias para:
+
+- Aceptar el origen configurado y rechazar orígenes cruzados o ausentes en mutaciones autenticadas por cookie.
+- Permitir métodos seguros y clientes que no utilizan cookie.
+- Aplicar límites por IP, devolver HTTP 429 y mantener contadores independientes.
+
+Estas pruebas deben ejecutarse con `npm test` dentro de `backend`. La integración con SQL Server y la verificación efectiva de permisos se mantienen pendientes de un SQL Server de pruebas desechable; no deben ejecutarse contra la base persistente de producción.
