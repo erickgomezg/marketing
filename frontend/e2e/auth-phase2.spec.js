@@ -52,3 +52,29 @@ test('password recovery returns a generic success message', async ({ page }) => 
   await page.getByRole('button', { name: 'Enviar instrucciones' }).click();
   await expect(page.getByRole('status')).toContainText('Si la cuenta puede recuperar el acceso');
 });
+
+test('administrator can close the session and sign in again', async ({ page }) => {
+  let loggedOut = false;
+  await page.route('**/api/access/me', (route) => loggedOut
+    ? route.fulfill({ status: 401, json: { error: 'Autenticación requerida' } })
+    : route.fulfill({ status: 200, json: { userId: '65ab32dc-162f-4f50-b9b5-8f6c8719cc08', email: 'admin@example.test', displayName: 'Admin Pruebas', role: 'Administrador' } }));
+  await page.route('**/api/auth/logout', async (route) => {
+    expect(route.request().method()).toBe('POST');
+    loggedOut = true;
+    await route.fulfill({ status: 204, body: '' });
+  });
+  await page.route('**/api/auth/login', (route) => route.fulfill({
+    status: 200,
+    headers: { 'Set-Cookie': 'amm_access=mock-new-session; HttpOnly; SameSite=Lax; Path=/' },
+    json: { user: { userId: '65ab32dc-162f-4f50-b9b5-8f6c8719cc08', email: 'admin@example.test', displayName: 'Admin Pruebas', role: 'Administrador' } },
+  }));
+  await page.goto('/');
+  await expect(page.getByText('Admin Pruebas')).toBeVisible();
+  await page.getByRole('button', { name: /Admin Pruebas/ }).click();
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+  await expect(page.getByRole('heading', { name: 'Inicia sesión' })).toBeVisible();
+  await page.getByLabel('Correo electrónico').fill('admin@example.test');
+  await page.getByLabel('Contraseña').fill('synthetic-test-password');
+  await page.getByRole('button', { name: 'Ingresar' }).click();
+  await expect(page.getByText('Admin Pruebas')).toBeVisible();
+});
