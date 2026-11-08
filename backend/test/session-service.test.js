@@ -47,3 +47,19 @@ test('refresh rejects malformed tokens before calling SQL', async () => {
   await assert.rejects(service.rotate('short'), { code: 'INVALID_REFRESH_TOKEN' });
   assert.equal(calls.length, 0);
 });
+
+test('individual logout revokes only the supplied refresh token hash', async () => {
+  const { service, calls } = setup();
+  const token = 'b'.repeat(43);
+  await service.revoke(token);
+  assert.equal(calls[0].action, 'revoke');
+  assert.equal(calls[0].values.tokenHash.length, 32);
+  assert.equal(calls[0].values.userId, undefined);
+});
+
+test('global logout revokes all sessions for the authenticated user', async () => {
+  const { service, calls } = setup();
+  await service.revokeAll(userId);
+  assert.equal(calls[0].action, 'revoke_all');
+  assert.equal(calls[0].values.userId, userId);
+});

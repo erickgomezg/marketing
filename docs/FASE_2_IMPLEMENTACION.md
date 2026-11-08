@@ -161,3 +161,10 @@ Cada token rotado se guarda en el historial. Si se vuelve a presentar, el proced
 ### Pendientes de integración
 
 Los procedimientos de cambio de contraseña, desactivación y cambio de rol incrementan `AuthVersion` y revocan las sesiones persistidas del usuario. Esto invalida tanto Access Tokens como Refresh Tokens. La ejecución de SQL Server real queda pendiente; la suite unitaria de backend sí fue ejecutada correctamente en GitHub Actions.
+
+
+### Revocación global expuesta por API
+
+- POST /api/auth/logout revoca sólo la sesión asociada al Refresh Token presentado.
+- POST /api/auth/logout-all requiere Access Token vigente, toma el UserId exclusivamente del principal autenticado y revoca todas las sesiones persistidas del usuario. No acepta un identificador de usuario enviado por el cliente.
+- Ambos endpoints limpian las cookies HttpOnly; la revocación global hace que los Access Tokens y Refresh Tokens de todas las sesiones fallen en las siguientes solicitudes.

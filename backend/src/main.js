@@ -72,7 +72,6 @@ app.use((error, _request, response, _next) => {
   console.error(JSON.stringify({ level: 'error', event: 'request_failed', code: error.number || error.code || 'INTERNAL_ERROR' }));
   response.status(error.status || 500).json({ error: error.status === 503 ? 'Autenticación temporalmente no disponible.' : 'No fue posible procesar la solicitud.' });
 });
-const port = Number(process.env.API_PORT || 3000);
 const server = app.listen(port, '0.0.0.0', () => console.log(JSON.stringify({ level: 'info', event: 'api_started', port })));
 let closing = false;
 const outboxTimer = setInterval(() => { outboxDispatcher.dispatchPending().catch((error) => console.error(JSON.stringify({ level: 'warn', event: 'email_outbox_poll_failed', code: error.number || 'OUTBOX_UNAVAILABLE' }))); }, 30000);
