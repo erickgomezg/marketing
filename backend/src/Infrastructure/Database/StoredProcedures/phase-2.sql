@@ -129,6 +129,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_User_SetActive @ActorUserId uniqueidentifier,@
  IF @IsActive=0 AND @targetRole='Administrador' AND (SELECT COUNT(*) FROM dbo.AppUser WITH (UPDLOCK,HOLDLOCK) WHERE Role='Administrador' AND IsActive=1)<=1
  BEGIN ROLLBACK; THROW 51012,'Cannot deactivate the last active administrator',1; END;
  UPDATE dbo.AppUser SET IsActive=@IsActive,AuthVersion=AuthVersion+1 WHERE UserId=@TargetUserId;
+ IF @IsActive=0 UPDATE dbo.AuthSession SET RevokedAt=SYSUTCDATETIME() WHERE UserId=@TargetUserId AND RevokedAt IS NULL;
  INSERT dbo.AuditLog(ActorUserId,TargetUserId,Action,Details) VALUES(@ActorUserId,@TargetUserId,'user.active',CONCAT('IsActive=',CONVERT(nvarchar(1),@IsActive)));
  COMMIT;
 GO
@@ -284,7 +285,8 @@ CREATE OR ALTER PROCEDURE dbo.usp_User
        WHEN NOT MATCHED THEN INSERT(PermissionId,UserId,BusinessId,SocialPlatformId,IsActive,CreatedBy) VALUES(NEWID(),@TargetUserId,r.BusinessId,r.SocialPlatformId,1,@ActorUserId);
      END;
      IF @OldRole='Viewer' AND @Role='Administrador' UPDATE dbo.UserBusinessPlatformPermission SET IsActive=0 WHERE UserId=@TargetUserId;
-     UPDATE dbo.AppUser SET Role=@Role WHERE UserId=@TargetUserId;
+     UPDATE dbo.AppUser SET Role=@Role,AuthVersion=AuthVersion+1 WHERE UserId=@TargetUserId;
+     UPDATE dbo.AuthSession SET RevokedAt=SYSUTCDATETIME() WHERE UserId=@TargetUserId AND RevokedAt IS NULL;
      INSERT dbo.AuditLog(ActorUserId,TargetUserId,Action,Details) VALUES(@ActorUserId,@TargetUserId,'user.role_changed',CONCAT(@OldRole,'->',@Role));
      COMMIT;
    END TRY
@@ -378,6 +380,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_PasswordReset
      IF @@ROWCOUNT=0 THROW 51020,'Reset token is invalid or expired',1;
      UPDATE dbo.PasswordResetToken SET UsedAt=SYSUTCDATETIME() WHERE TokenHash=@TokenHash;
      UPDATE dbo.PasswordResetToken SET RevokedAt=SYSUTCDATETIME() WHERE UserId=@ResetUser AND TokenHash<>@TokenHash AND UsedAt IS NULL AND RevokedAt IS NULL;
+     UPDATE dbo.AuthSession SET RevokedAt=SYSUTCDATETIME() WHERE UserId=@ResetUser AND RevokedAt IS NULL;
      INSERT dbo.AuditLog(ActorUserId,TargetUserId,Action,Details) VALUES(NULL,@ResetUser,'password.reset','Sessions revoked by AuthVersion increment');
      COMMIT;
    END TRY
