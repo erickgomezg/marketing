@@ -1,0 +1,22 @@
+{
+  "name": "ai-marketing-manager-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.js",
+    "init:database": "node src/Infrastructure/Database/initialize.js",
+    "init:bucket": "node src/Infrastructure/Storage/initializeBucket.js",
+    "bootstrap:admin": "node src/Infrastructure/Bootstrap/bootstrapAdmin.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "argon2": "^0.44.0",
+    "google-auth-library": "^11.3.2",
+    "minio": "^8.0.5",
+    "mssql": "^11.0.1",
+    "nodemailer": "^7.0.10",
+    "redis": "^4.7.0"
+  }
+}

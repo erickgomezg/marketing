@@ -1,0 +1,28 @@
+services:
+  frontend:
+    image: ai-marketing-manager-frontend:prod
+    build:
+      context: ./frontend
+      target: production
+    expose: ["80"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  backend:
+    environment:
+      NODE_ENV: production
+      SQLSERVER_ENCRYPT: "true"
+      SQLSERVER_TRUST_SERVER_CERTIFICATE: ${SQLSERVER_TRUST_SERVER_CERTIFICATE_PROD:-false}
+
+  nginx:
+    volumes:
+      - ./infrastructure/nginx/default.prod.conf.template:/etc/nginx/templates/default.conf.template:ro
+
+  sqlserver:
+    environment:
+      MSSQL_PID: ${MSSQL_PID:-Standard}
+

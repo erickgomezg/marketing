@@ -1,0 +1,93 @@
+import express from 'express';
+import { createSqlServerAdapter } from './Infrastructure/Database/Connection/sqlServer.js';
+import { createRedisAdapter } from './Infrastructure/Cache/redis.js';
+import { createMinioAdapter } from './Infrastructure/Storage/minio.js';
+import { createAuthRoutes } from './Presentation/Routes/googleAuthRoutes.js';
+import { createAccessRoutes } from './Presentation/Routes/accessRoutes.js';
+import { createAuthenticate, requireAdministrator } from './Presentation/Middlewares/authenticate.js';
+import { SqlAuthRepository } from './Infrastructure/Repositories/SqlAuthRepository.js';
+import { SqlAccessRepository } from './Infrastructure/Repositories/SqlAccessRepository.js';
+import { AccessService } from './Application/Services/AccessService.js';
+import { LoginWithPassword } from './Application/UseCases/LoginWithPassword.js';
+import { LoginWithGoogleIdentity } from './Application/UseCases/LoginWithGoogleIdentity.js';
+import { Argon2PasswordHasher } from './Infrastructure/Security/Argon2PasswordHasher.js';
+import { AccessTokenService } from './Infrastructure/Security/AccessTokenService.js';
+import { GoogleOAuthProvider } from './Infrastructure/Providers/GoogleOAuthProvider.js';
+import { createAuthController } from './Presentation/Controllers/AuthController.js';
+import { SqlUserRepository } from './Infrastructure/Repositories/SqlUserRepository.js';
+import { OneTimeTokenService } from './Infrastructure/Security/OneTimeTokenService.js';
+import { OutboxEncryptor } from './Infrastructure/Security/OutboxEncryptor.js';
+import { SmtpEmailProvider } from './Infrastructure/Providers/SmtpEmailProvider.js';
+import { EmailOutboxDispatcher } from './Application/Services/EmailOutboxDispatcher.js';
+import { UserAdministrationService } from './Application/Services/UserAdministrationService.js';
+
+const app = express();
+app.use(express.json({ limit: '256kb' }));
+app.use((request, _response, next) => {
+  request.cookies = Object.fromEntries((request.headers.cookie || '').split(';').map((entry) => entry.trim().split(/=(.*)/s).slice(0, 2)).filter(([key, value]) => key && value));
+  next();
+});
+const authRepository = new SqlAuthRepository();
+const tokenService = new AccessTokenService();
+const authenticate = createAuthenticate({ authRepository });
+const loginWithPassword = new LoginWithPassword({ authRepository, passwordHasher: new Argon2PasswordHasher(), tokenService });
+const googleLogin = new LoginWithGoogleIdentity({ authRepository, tokenService });
+const userRepository = new SqlUserRepository();
+const passwordHasher = new Argon2PasswordHasher();
+const encryptor = new OutboxEncryptor();
+const outboxDispatcher = new EmailOutboxDispatcher({ userRepository, encryptor, emailProvider: new SmtpEmailProvider() });
+const userAdministration = new UserAdministrationService({ userRepository, tokenService: new OneTimeTokenService(), passwordHasher, encryptor, outboxDispatcher });
+const authController = createAuthController({ loginWithPassword, userAdministration });
+app.use('/auth', createAuthRoutes({ googleLogin, googleProvider: new GoogleOAuthProvider(), authController }));
+app.use('/access', createAccessRoutes({ accessService: new AccessService({ accessRepository: new SqlAccessRepository(), userRepository, userAdministration }), authenticate, requireAdministrator }));
+const port = Number(process.env.API_PORT || 3000);
+const adapters = {
+  sqlserver: createSqlServerAdapter(),
+  redis: createRedisAdapter(),
+  minio: createMinioAdapter(),
+};
+
+app.get('/health', (_request, response) => {
+  response.status(200).json({ status: 'ok', service: 'api', timestamp: new Date().toISOString() });
+});
+
+app.get('/health/ready', async (_request, response) => {
+  const results = await Promise.all(Object.entries(adapters).map(async ([name, adapter]) => {
+    try {
+      await adapter.check();
+      return [name, { status: 'available' }];
+    } catch (error) {
+      console.error(JSON.stringify({ level: 'error', event: 'dependency_check_failed', dependency: name, message: error.message }));
+      return [name, { status: 'unavailable', message: 'Connection check failed' }];
+    }
+  }));
+  const dependencies = Object.fromEntries(results);
+  const ready = Object.values(dependencies).every(({ status }) => status === 'available');
+  response.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not_ready', dependencies, timestamp: new Date().toISOString() });
+});
+
+app.use((error, _request, response, _next) => {
+  console.error(JSON.stringify({ level: 'error', event: 'request_failed', code: error.number || error.code || 'INTERNAL_ERROR' }));
+  response.status(error.status || 500).json({ error: error.status === 503 ? 'Autenticación temporalmente no disponible.' : 'No fue posible procesar la solicitud.' });
+});
+
+const server = app.listen(port, '0.0.0.0', () => {
+  console.log(JSON.stringify({ level: 'info', event: 'api_started', port }));
+});
+
+let closing = false;
+const outboxTimer = setInterval(() => { outboxDispatcher.dispatchPending().catch((error) => console.error(JSON.stringify({ level: 'warn', event: 'email_outbox_poll_failed', code: error.number || 'OUTBOX_UNAVAILABLE' }))); }, 30000);
+outboxTimer.unref();
+async function shutdown(signal) {
+  if (closing) return;
+  closing = true;
+  clearInterval(outboxTimer);
+  console.log(JSON.stringify({ level: 'info', event: 'shutdown_started', signal }));
+  server.close(async () => {
+    await Promise.allSettled(Object.values(adapters).map((adapter) => adapter.close()));
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
