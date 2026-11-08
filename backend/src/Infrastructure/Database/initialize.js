@@ -62,7 +62,7 @@ try {
   // Only procedures invoked by the API are executable by app_user.
   // Bootstrap remains exclusive to the isolated initialization service using sa.
   const executableProcedures = [
-    'usp_Auth_GetActiveUser', 'usp_Auth_FindByEmail', 'usp_Auth_GoogleUser',
+    'usp_Auth_GetActiveUser', 'usp_Auth_FindByEmail', 'usp_Auth_GoogleUser', 'usp_Auth_Session',
     'usp_User_ListForAdmin', 'usp_User_SetActive', 'usp_Business_ListAuthorized',
     'usp_Permission_ListForAdmin', 'usp_Permission_SaveForViewer',
     'usp_SocialAccount_ListAuthorized', 'usp_SocialData_AuthorizationPredicate',

@@ -4,20 +4,22 @@ import { LoginWithPassword } from '../src/Application/UseCases/LoginWithPassword
 import { LoginWithGoogleIdentity } from '../src/Application/UseCases/LoginWithGoogleIdentity.js';
 import { Argon2PasswordHasher } from '../src/Infrastructure/Security/Argon2PasswordHasher.js';
 
-const row = { UserId: '65ab32dc-162f-4f50-b9b5-8f6c8719cc08', Email: 'admin@example.test', DisplayName: 'Admin', Role: 'Administrador', IsActive: true, PasswordHash: 'argon-hash' };
+const row = { UserId: '65ab32dc-162f-4f50-b9b5-8f6c8719cc08', Email: 'admin@example.test', DisplayName: 'Admin', Role: 'Administrador', IsActive: true, PasswordHash: 'argon-hash', AuthVersion: 0 };
+const session = { sessionId: '65ab32dc-162f-4f50-b9b5-8f6c8719cc09', refreshToken: 'opaque-refresh-token', accessToken: 'signed:session', accessExpiresInSeconds: 900, refreshExpiresInSeconds: 604800 };
 function useCase({ record = row, verifies = true } = {}) {
   return new LoginWithPassword({
     authRepository: { findByEmail: async () => record },
     passwordHasher: { verify: async () => verifies },
-    tokenService: { issue: (id) => `signed:${id}`, lifetimeSeconds: () => 900 },
+    sessionService: { create: async () => session },
   });
 }
 
-test('login with valid password returns profile from the repository and an access credential', async () => {
+test('login with valid password creates a session and returns profile', async () => {
   const result = await useCase().execute({ email: ' ADMIN@example.test ', password: 'correct horse battery staple' });
   assert.equal(result.user.role, 'Administrador');
   assert.equal(result.user.email, 'admin@example.test');
-  assert.equal(result.accessToken, `signed:${row.UserId}`);
+  assert.equal(result.accessToken, session.accessToken);
+  assert.equal(result.refreshToken, session.refreshToken);
 });
 
 test('login rejects wrong password with a generic error', async () => {
@@ -37,7 +39,7 @@ test('login rejects malformed input before querying credentials', async () => {
 test('Argon2id hashes verify only the matching password', async () => {
   const hasher = new Argon2PasswordHasher();
   const hash = await hasher.hash('strong test password');
-  assert.match(hash, /^\$argon2id\$/);
+  assert.match(hash, /^\\$argon2id\\$/);
   assert.equal(await hasher.verify(hash, 'strong test password'), true);
   assert.equal(await hasher.verify(hash, 'wrong password'), false);
 });
@@ -46,8 +48,17 @@ test('Google login refuses unprovisioned identities without creating an account'
   let created = false;
   const googleLogin = new LoginWithGoogleIdentity({
     authRepository: { findActiveByGoogleSubject: async () => null, createUser: async () => { created = true; } },
-    tokenService: { issue: () => 'never-issued', lifetimeSeconds: () => 900 },
+    sessionService: { create: async () => session },
   });
   await assert.rejects(googleLogin.execute('unprovisioned-subject'), { code: 'IDENTITY_NOT_PROVISIONED' });
   assert.equal(created, false);
+});
+
+test('Google login creates a session only for a linked identity', async () => {
+  const googleLogin = new LoginWithGoogleIdentity({
+    authRepository: { findActiveByGoogleSubject: async () => row },
+    sessionService: { create: async () => session },
+  });
+  const result = await googleLogin.execute('stable-google-sub');
+  assert.equal(result.refreshToken, session.refreshToken);
 });

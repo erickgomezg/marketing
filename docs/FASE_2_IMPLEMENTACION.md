@@ -142,3 +142,22 @@ Se añadieron pruebas unitarias para:
 - Aplicar límites por IP, devolver HTTP 429 y mantener contadores independientes.
 
 Estas pruebas deben ejecutarse con `npm test` dentro de `backend`. La integración con SQL Server y la verificación efectiva de permisos se mantienen pendientes de un SQL Server de pruebas desechable; no deben ejecutarse contra la base persistente de producción.
+
+
+## Bloque 2 — sesiones persistentes y renovación
+
+- Se añadieron `dbo.AuthSession` y `dbo.AuthSessionTokenHistory`. Sólo se almacenan hashes SHA-256 de Refresh Tokens.
+- `dbo.usp_Auth_Session` centraliza creación, rotación, revocación individual y revocación global por usuario.
+- El JWT contiene el identificador de sesión (`sid`). Cada solicitud autenticada comprueba en SQL Server que el usuario y la sesión siguen activos, además de validar `AuthVersion`.
+- Login local y Google crean una sesión persistente. Google sigue requiriendo una identidad previamente vinculada.
+- `POST /auth/refresh` rota el Refresh Token y emite un Access Token nuevo. `POST /auth/logout` revoca la sesión actual.
+- El Refresh Token viaja sólo en cookie HttpOnly, Secure en producción, SameSite=Lax y limitada a `/api/auth`; no se devuelve en el JSON.
+- `AUTH_REFRESH_TOKEN_DAYS` configura la duración (1–30 días; predeterminado 7). El Access Token conserva 10–15 minutos.
+
+### Detección de reutilización
+
+Cada token rotado se guarda en el historial. Si se vuelve a presentar, el procedimiento revoca la sesión y registra el evento. La revocación global por usuario está disponible para flujos administrativos.
+
+### Pendientes de integración
+
+Los procedimientos existentes de cambio de contraseña y desactivación incrementan `AuthVersion`, lo que invalida Access Tokens, pero aún debe añadirse revocación física de todas las filas de `AuthSession` en esos procedimientos para invalidar también Refresh Tokens. El procedimiento de cambio de rol debe revisarse igualmente para invalidar sesiones existentes. La ejecución de SQL Server y pruebas locales/CI no se ha realizado desde esta edición remota.
