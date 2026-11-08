@@ -26,7 +26,6 @@ import { EmailOutboxDispatcher } from './Application/Services/EmailOutboxDispatc
 import { UserAdministrationService } from './Application/Services/UserAdministrationService.js';
 
 const app = express();
-// Trust the single Nginx reverse-proxy hop used by the Compose topology.
 app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1));
 app.use(express.json({ limit: '256kb' }));
 app.use((request, _response, next) => {
@@ -52,25 +51,15 @@ const encryptor = new OutboxEncryptor();
 const outboxDispatcher = new EmailOutboxDispatcher({ userRepository, encryptor, emailProvider: new SmtpEmailProvider() });
 const userAdministration = new UserAdministrationService({ userRepository, tokenService: new OneTimeTokenService(), passwordHasher, encryptor, outboxDispatcher });
 const authController = createAuthController({ loginWithPassword, userAdministration, sessionService });
-app.use('/auth', createAuthRoutes({ googleLogin, googleProvider: new GoogleOAuthProvider(), authController }));
+app.use('/auth', createAuthRoutes({ googleLogin, googleProvider: new GoogleOAuthProvider(), authController, authenticate }));
 app.use('/access', createAccessRoutes({ accessService: new AccessService({ accessRepository: new SqlAccessRepository(), userRepository, userAdministration }), authenticate, requireAdministrator }));
 const port = Number(process.env.API_PORT || 3000);
-const adapters = {
-  sqlserver: createSqlServerAdapter(),
-  redis: createRedisAdapter(),
-  minio: createMinioAdapter(),
-};
-
-app.get('/health', (_request, response) => {
-  response.status(200).json({ status: 'ok', service: 'api', timestamp: new Date().toISOString() });
-});
-
+const adapters = { sqlserver: createSqlServerAdapter(), redis: createRedisAdapter(), minio: createMinioAdapter() };
+app.get('/health', (_request, response) => response.status(200).json({ status: 'ok', service: 'api', timestamp: new Date().toISOString() }));
 app.get('/health/ready', async (_request, response) => {
   const results = await Promise.all(Object.entries(adapters).map(async ([name, adapter]) => {
-    try {
-      await adapter.check();
-      return [name, { status: 'available' }];
-    } catch (error) {
+    try { await adapter.check(); return [name, { status: 'available' }]; }
+    catch (error) {
       console.error(JSON.stringify({ level: 'error', event: 'dependency_check_failed', dependency: name, message: error.message }));
       return [name, { status: 'unavailable', message: 'Connection check failed' }];
     }
@@ -79,16 +68,12 @@ app.get('/health/ready', async (_request, response) => {
   const ready = Object.values(dependencies).every(({ status }) => status === 'available');
   response.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not_ready', dependencies, timestamp: new Date().toISOString() });
 });
-
 app.use((error, _request, response, _next) => {
   console.error(JSON.stringify({ level: 'error', event: 'request_failed', code: error.number || error.code || 'INTERNAL_ERROR' }));
   response.status(error.status || 500).json({ error: error.status === 503 ? 'Autenticación temporalmente no disponible.' : 'No fue posible procesar la solicitud.' });
 });
-
-const server = app.listen(port, '0.0.0.0', () => {
-  console.log(JSON.stringify({ level: 'info', event: 'api_started', port }));
-});
-
+const port = Number(process.env.API_PORT || 3000);
+const server = app.listen(port, '0.0.0.0', () => console.log(JSON.stringify({ level: 'info', event: 'api_started', port })));
 let closing = false;
 const outboxTimer = setInterval(() => { outboxDispatcher.dispatchPending().catch((error) => console.error(JSON.stringify({ level: 'warn', event: 'email_outbox_poll_failed', code: error.number || 'OUTBOX_UNAVAILABLE' }))); }, 30000);
 outboxTimer.unref();
@@ -97,10 +82,7 @@ async function shutdown(signal) {
   closing = true;
   clearInterval(outboxTimer);
   console.log(JSON.stringify({ level: 'info', event: 'shutdown_started', signal }));
-  server.close(async () => {
-    await Promise.allSettled(Object.values(adapters).map((adapter) => adapter.close()));
-    process.exit(0);
-  });
+  server.close(async () => { await Promise.allSettled(Object.values(adapters).map((adapter) => adapter.close())); process.exit(0); });
   setTimeout(() => process.exit(1), 10000).unref();
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));

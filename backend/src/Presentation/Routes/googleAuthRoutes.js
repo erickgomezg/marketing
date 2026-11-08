@@ -1,10 +1,11 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 
-export function createAuthRoutes({ googleLogin, googleProvider, authController }) {
+export function createAuthRoutes({ googleLogin, googleProvider, authController, authenticate }) {
 const router = Router();
 router.post('/login', authController.login);
 router.post('/logout', authController.logout);
+router.post('/logout-all', authenticate, authController.logoutAll);
 router.post('/refresh', authController.refresh);
 router.post('/invitation/validate', authController.validateInvitation);
 router.post('/invitation/accept', authController.acceptInvitation);
@@ -34,8 +35,7 @@ router.get('/google/callback', async (req, res) => {
     if (!expected.length || expected.length !== received.length || !timingSafeEqual(expected, received)) throw new Error('invalid_state');
     const claims = await googleProvider.verifyAuthorizationCode({ code: req.query.code, codeVerifier, nonce });
     const result = await googleLogin.execute(claims.sub);
-    const token = result.accessToken;
-    res.cookie('amm_access', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: result.accessExpiresInSeconds * 1000 });
+    res.cookie('amm_access', result.accessToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: result.accessExpiresInSeconds * 1000 });
     res.cookie('amm_refresh', result.refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/api/auth', maxAge: result.refreshExpiresInSeconds * 1000 });
     return res.redirect('/');
   } catch (error) {

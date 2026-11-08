@@ -47,4 +47,9 @@ export class SessionService {
     if (typeof refreshToken !== 'string' || refreshToken.length < 32 || refreshToken.length > 256) return;
     await this.sessionRepository.execute('revoke', { tokenHash: hashToken(refreshToken) });
   }
+
+  async revokeAll(userId) {
+    if (typeof userId !== 'string' || !userId) throw new TypeError('A verified user id is required');
+    await this.sessionRepository.execute('revoke_all', { userId });
+  }
 }

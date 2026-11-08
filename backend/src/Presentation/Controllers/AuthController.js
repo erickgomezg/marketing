@@ -37,6 +37,13 @@ export function createAuthController({ loginWithPassword, userAdministration, se
         response.status(204).end();
       } catch (error) { next(error); }
     },
+    async logoutAll(request, response, next) {
+      try {
+        await sessionService.revokeAll(request.auth.UserId);
+        clearCookies(response);
+        response.status(204).end();
+      } catch (error) { next(error); }
+    },
     async validateInvitation(request, response, next) {
       try {
         const user = await userAdministration.validateInvitation(request.body?.token);
