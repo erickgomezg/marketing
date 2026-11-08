@@ -35,7 +35,12 @@ export function createAuthController({ loginWithPassword, userAdministration, se
         await sessionService.revoke(request.cookies?.amm_refresh);
         clearCookies(response);
         response.status(204).end();
-      } catch (error) { next(error); }
+      } catch (error) {
+        // Always expire browser credentials, even if SQL is temporarily unavailable.
+        // The 503 tells the client that server-side revocation could not be confirmed.
+        clearCookies(response);
+        return response.status(503).json({ error: 'Se cerró el acceso en este navegador, pero no se pudo confirmar la revocación de la sesión en el servidor.' });
+      }
     },
     async logoutAll(request, response, next) {
       try {
