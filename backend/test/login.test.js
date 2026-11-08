@@ -39,7 +39,7 @@ test('login rejects malformed input before querying credentials', async () => {
 test('Argon2id hashes verify only the matching password', async () => {
   const hasher = new Argon2PasswordHasher();
   const hash = await hasher.hash('strong test password');
-  assert.match(hash, /^\\$argon2id\\$/);
+  assert.match(hash, /^\$argon2id\$/);
   assert.equal(await hasher.verify(hash, 'strong test password'), true);
   assert.equal(await hasher.verify(hash, 'wrong password'), false);
 });
