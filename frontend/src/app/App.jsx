@@ -13,8 +13,8 @@ const ConnectionsPage = lazy(() => import('../modules/connections/ConnectionsPag
 const UsersPage = lazy(() => import('../modules/users/UsersPage.jsx'));
 const SettingsPage = lazy(() => import('../modules/settings/SettingsPage.jsx'));
 
-function Login({ onLogin }) {
-  const [error, setError] = useState(() => new URLSearchParams(window.location.search).has('auth_error') ? 'No se pudo iniciar sesión. Verifica tus credenciales o la cuenta vinculada.' : '');
+function Login({ onLogin, notice = '' }) {
+  const [error, setError] = useState(() => notice || (new URLSearchParams(window.location.search).has('auth_error') ? 'No se pudo iniciar sesión. Verifica tus credenciales o la cuenta vinculada.' : ''));
   const [busy, setBusy] = useState(false);
   const submit = async (event) => {
     event.preventDefault(); setError(''); setBusy(true);
@@ -34,9 +34,22 @@ export default function App() {
   const [activeAccount, setActiveAccount] = useState('Todas las cuentas');
   const [user, setUser] = useState(null);
   const [status, setStatus] = useState('loading');
+  const [authNotice, setAuthNotice] = useState('');
   const logout = useCallback(async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    setUser(null); setStatus('anonymous');
+    setAuthNotice('');
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      if (response.status === 503) {
+        const result = await response.json().catch(() => ({}));
+        setAuthNotice(result.error || 'La sesión se cerró en este navegador, pero no se confirmó la revocación en el servidor.');
+        setUser(null); setStatus('anonymous');
+        return;
+      }
+      if (!response.ok) throw new Error('No se pudo cerrar la sesión. Verifica la conexión e inténtalo nuevamente.');
+      setUser(null); setStatus('anonymous');
+    } catch (error) {
+      setAuthNotice(error.message || 'No se pudo cerrar la sesión.');
+    }
   }, []);
   useEffect(() => {
     fetch('/api/access/me').then((response) => response.ok ? response.json() : Promise.reject())
@@ -44,7 +57,7 @@ export default function App() {
       .catch(() => setStatus('anonymous'));
   }, []);
   if (status === 'loading') return <div className="page-loading"><span className="loading-spinner" /><span>Validando sesión…</span></div>;
-  if (status === 'anonymous') return <Routes><Route path="/accept-invitation" element={<AuthFlowPage />} /><Route path="/forgot-password" element={<AuthFlowPage />} /><Route path="/reset-password" element={<AuthFlowPage />} /><Route path="*" element={<Login onLogin={(profile) => { setUser(profile); setStatus('authenticated'); }} />} /></Routes>;
+  if (status === 'anonymous') return <Routes><Route path="/accept-invitation" element={<AuthFlowPage />} /><Route path="/forgot-password" element={<AuthFlowPage />} /><Route path="/reset-password" element={<AuthFlowPage />} /><Route path="*" element={<Login notice={authNotice} onLogin={(profile) => { setAuthNotice(''); setUser(profile); setStatus('authenticated'); }} />} /></Routes>;
   return <AppShell activeAccount={activeAccount} onAccountChange={setActiveAccount} user={user} onLogout={logout}>
     {user.role === 'Viewer'
       ? <div className="page"><h1>Dashboard disponible próximamente</h1><p>Tu sesión Viewer está activa. Las vistas comerciales se habilitarán cuando se conecten a datos autorizados.</p></div>
