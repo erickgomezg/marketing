@@ -7,13 +7,19 @@ function configuredOrigins() {
   }));
 }
 
+function requestOrigin(request) {
+  try { return new URL(`${request.protocol}://${request.get('host')}`).origin; }
+  catch { return null; }
+}
+
 export function createOriginProtection({ allowedOrigins = configuredOrigins() } = {}) {
   return function originProtection(request, response, next) {
     if (SAFE_METHODS.has(request.method)) return next();
-    // Reject cross-origin browser mutations even on public endpoints such as login.
-    // Cookie-authenticated mutations must also carry an explicit allowed Origin.
+    // Accept the exact same-origin host even when APP_PUBLIC_URL is not configured
+    // for a production domain. Cross-origin mutations remain blocked.
     const origin = request.get('origin');
-    if ((origin && !allowedOrigins.has(origin)) || (request.cookies?.amm_access && !origin)) {
+    const sameOrigin = origin && origin === requestOrigin(request);
+    if ((origin && !sameOrigin && !allowedOrigins.has(origin)) || (request.cookies?.amm_access && !origin)) {
       return response.status(403).json({ error: 'Origen de solicitud no permitido.' });
     }
     return next();
