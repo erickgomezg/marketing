@@ -61,8 +61,27 @@ IF OBJECT_ID('dbo.UserBusinessPlatformPermission','U') IS NULL CREATE TABLE dbo.
  CONSTRAINT UQ_UserBusinessPlatform UNIQUE(UserId,BusinessId,SocialPlatformId));
 IF NOT EXISTS (SELECT 1 FROM dbo.SocialPlatform) INSERT dbo.SocialPlatform(Code,Name) VALUES ('facebook','Facebook'),('instagram','Instagram'),('tiktok','TikTok');
 GO
-CREATE OR ALTER PROCEDURE dbo.usp_Auth_GetActiveUser @UserId uniqueidentifier AS
- SELECT UserId,Email,DisplayName,Role,AuthVersion FROM dbo.AppUser WHERE UserId=@UserId AND IsActive=1;
+IF OBJECT_ID('dbo.AuthSession','U') IS NULL CREATE TABLE dbo.AuthSession (
+ SessionId uniqueidentifier NOT NULL CONSTRAINT PK_AuthSession PRIMARY KEY,
+ UserId uniqueidentifier NOT NULL CONSTRAINT FK_AuthSession_AppUser REFERENCES dbo.AppUser(UserId),
+ RefreshTokenHash varbinary(32) NOT NULL CONSTRAINT UQ_AuthSession_RefreshHash UNIQUE,
+ ExpiresAt datetime2 NOT NULL, CreatedAt datetime2 NOT NULL CONSTRAINT DF_AuthSession_Created DEFAULT SYSUTCDATETIME(),
+ LastUsedAt datetime2 NULL, RevokedAt datetime2 NULL
+);
+IF OBJECT_ID('dbo.AuthSessionTokenHistory','U') IS NULL CREATE TABLE dbo.AuthSessionTokenHistory (
+ TokenHash varbinary(32) NOT NULL CONSTRAINT PK_AuthSessionTokenHistory PRIMARY KEY,
+ SessionId uniqueidentifier NOT NULL CONSTRAINT FK_AuthSessionTokenHistory_Session REFERENCES dbo.AuthSession(SessionId),
+ UsedAt datetime2 NOT NULL CONSTRAINT DF_AuthSessionTokenHistory_Used DEFAULT SYSUTCDATETIME()
+);
+IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('dbo.AuthSession') AND name='IX_AuthSession_UserActive')
+ CREATE INDEX IX_AuthSession_UserActive ON dbo.AuthSession(UserId,RevokedAt,ExpiresAt);
+
+CREATE OR ALTER PROCEDURE dbo.usp_Auth_GetActiveUser @UserId uniqueidentifier,@SessionId uniqueidentifier AS
+ SET NOCOUNT ON;
+ SELECT u.UserId,u.Email,u.DisplayName,u.Role,u.AuthVersion
+ FROM dbo.AppUser u JOIN dbo.AuthSession s ON s.UserId=u.UserId
+ WHERE u.UserId=@UserId AND u.IsActive=1 AND s.SessionId=@SessionId
+   AND s.RevokedAt IS NULL AND s.ExpiresAt>SYSUTCDATETIME();
 GO
 CREATE OR ALTER PROCEDURE dbo.usp_Auth_FindByEmail @Email nvarchar(320) AS
  SET NOCOUNT ON;
@@ -397,4 +416,63 @@ CREATE OR ALTER PROCEDURE dbo.usp_EmailOutbox
    RETURN;
  END;
  THROW 51017,'Unknown outbox action',1;
+GO
+
+GO
+CREATE OR ALTER PROCEDURE dbo.usp_Auth_Session
+ @accion nvarchar(20),@UserId uniqueidentifier=NULL,@SessionId uniqueidentifier=NULL,
+ @TokenHash varbinary(32)=NULL,@NewTokenHash varbinary(32)=NULL,@ExpiresAt datetime2=NULL AS
+ SET NOCOUNT ON; SET XACT_ABORT ON;
+ IF @accion='create'
+ BEGIN
+   IF @UserId IS NULL OR @SessionId IS NULL OR @TokenHash IS NULL OR DATALENGTH(@TokenHash)<>32 OR @ExpiresAt<=SYSUTCDATETIME() THROW 51030,'Invalid session data',1;
+   IF NOT EXISTS(SELECT 1 FROM dbo.AppUser WHERE UserId=@UserId AND IsActive=1) THROW 51031,'User is inactive',1;
+   INSERT dbo.AuthSession(SessionId,UserId,RefreshTokenHash,ExpiresAt) VALUES(@SessionId,@UserId,@TokenHash,@ExpiresAt);
+   SELECT @SessionId SessionId,@UserId UserId;
+   RETURN;
+ END;
+ IF @accion='rotate'
+ BEGIN
+   IF @TokenHash IS NULL OR DATALENGTH(@TokenHash)<>32 OR @NewTokenHash IS NULL OR DATALENGTH(@NewTokenHash)<>32 OR @ExpiresAt<=SYSUTCDATETIME() THROW 51030,'Invalid refresh token data',1;
+   BEGIN TRY
+     BEGIN TRAN;
+     DECLARE @FoundSession uniqueidentifier,@FoundUser uniqueidentifier,@CurrentHash varbinary(32);
+     SELECT @FoundSession=SessionId,@FoundUser=UserId,@CurrentHash=RefreshTokenHash
+       FROM dbo.AuthSession WITH (UPDLOCK,HOLDLOCK)
+       WHERE RefreshTokenHash=@TokenHash AND RevokedAt IS NULL AND ExpiresAt>SYSUTCDATETIME();
+     IF @FoundSession IS NULL
+     BEGIN
+       SELECT @FoundSession=SessionId,@FoundUser=UserId FROM dbo.AuthSessionTokenHistory WITH (UPDLOCK,HOLDLOCK) WHERE TokenHash=@TokenHash;
+       IF @FoundSession IS NOT NULL
+       BEGIN
+         UPDATE dbo.AuthSession SET RevokedAt=SYSUTCDATETIME() WHERE SessionId=@FoundSession AND RevokedAt IS NULL;
+         INSERT dbo.AuditLog(ActorUserId,TargetUserId,Action,Details) VALUES(NULL,@FoundUser,'session.refresh_reuse_detected','Session revoked after reuse of a rotated refresh token');
+         COMMIT;
+         THROW 51032,'Refresh token reuse detected',1;
+       END;
+       ROLLBACK;
+       THROW 51033,'Refresh token is invalid or expired',1;
+     END;
+     IF EXISTS(SELECT 1 FROM dbo.AuthSessionTokenHistory WHERE TokenHash=@NewTokenHash) THROW 51030,'Refresh token collision',1;
+     INSERT dbo.AuthSessionTokenHistory(TokenHash,SessionId) VALUES(@CurrentHash,@FoundSession);
+     UPDATE dbo.AuthSession SET RefreshTokenHash=@NewTokenHash,ExpiresAt=@ExpiresAt,LastUsedAt=SYSUTCDATETIME() WHERE SessionId=@FoundSession;
+     SELECT s.SessionId,u.UserId,u.AuthVersion,u.Email,u.DisplayName,u.Role
+       FROM dbo.AuthSession s JOIN dbo.AppUser u ON u.UserId=s.UserId
+       WHERE s.SessionId=@FoundSession AND u.IsActive=1;
+     COMMIT;
+   END TRY
+   BEGIN CATCH IF XACT_STATE()<>0 ROLLBACK; THROW; END CATCH;
+   RETURN;
+ END;
+ IF @accion='revoke'
+ BEGIN
+   UPDATE dbo.AuthSession SET RevokedAt=SYSUTCDATETIME() WHERE RefreshTokenHash=@TokenHash AND RevokedAt IS NULL;
+   RETURN;
+ END;
+ IF @accion='revoke_all'
+ BEGIN
+   UPDATE dbo.AuthSession SET RevokedAt=SYSUTCDATETIME() WHERE UserId=@UserId AND RevokedAt IS NULL;
+   RETURN;
+ END;
+ THROW 51034,'Unknown session action',1;
 GO

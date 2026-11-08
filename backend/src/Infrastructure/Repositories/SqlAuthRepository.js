@@ -8,9 +8,10 @@ export class SqlAuthRepository {
     return result.recordset[0] || null;
   }
 
-  async findActiveById(userId) {
+  async findActiveById(userId, sessionId) {
     const pool = await getPool();
-    const result = await pool.request().input('UserId', sql.UniqueIdentifier, userId).execute('dbo.usp_Auth_GetActiveUser');
+    const result = await pool.request().input('UserId', sql.UniqueIdentifier, userId)
+      .input('SessionId', sql.UniqueIdentifier, sessionId).execute('dbo.usp_Auth_GetActiveUser');
     return result.recordset[0] || null;
   }
 

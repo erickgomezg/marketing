@@ -12,8 +12,8 @@ function verifiedSubject(token) {
   try {
     const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString());
     const claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-    if (header.alg !== 'HS256' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(claims.sub || '') || !Number.isInteger(claims.ver) || !Number.isFinite(claims.exp) || claims.exp <= Date.now() / 1000) return null;
-    return { userId: claims.sub, version: claims.ver };
+    if (header.alg !== 'HS256' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(claims.sub || '') || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(claims.sid || '') || !Number.isInteger(claims.ver) || !Number.isFinite(claims.exp) || claims.exp <= Date.now() / 1000) return null;
+    return { userId: claims.sub, sessionId: claims.sid, version: claims.ver };
   } catch { return null; }
 }
 
@@ -24,7 +24,7 @@ return async function authenticate(request, response, next) {
   const claims = verifiedSubject(token);
   if (!claims) return response.status(401).json({ error: 'Credencial inválida o vencida' });
   try {
-    const user = await authRepository.findActiveById(claims.userId);
+    const user = await authRepository.findActiveById(claims.userId, claims.sessionId);
     if (!user) return response.status(401).json({ error: 'Usuario inactivo o inexistente' });
     if ((user.AuthVersion || 0) !== claims.version) return response.status(401).json({ error: 'La sesión fue revocada' });
     request.auth = user;
