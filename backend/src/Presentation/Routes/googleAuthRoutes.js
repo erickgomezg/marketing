@@ -5,6 +5,7 @@ export function createAuthRoutes({ googleLogin, googleProvider, authController }
 const router = Router();
 router.post('/login', authController.login);
 router.post('/logout', authController.logout);
+router.post('/refresh', authController.refresh);
 router.post('/invitation/validate', authController.validateInvitation);
 router.post('/invitation/accept', authController.acceptInvitation);
 router.post('/forgot-password', authController.forgotPassword);
@@ -34,7 +35,8 @@ router.get('/google/callback', async (req, res) => {
     const claims = await googleProvider.verifyAuthorizationCode({ code: req.query.code, codeVerifier, nonce });
     const result = await googleLogin.execute(claims.sub);
     const token = result.accessToken;
-    res.cookie('amm_access', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: result.expiresInSeconds * 1000 });
+    res.cookie('amm_access', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: result.accessExpiresInSeconds * 1000 });
+    res.cookie('amm_refresh', result.refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/api/auth', maxAge: result.refreshExpiresInSeconds * 1000 });
     return res.redirect('/');
   } catch (error) {
     const code = error.code === 'IDENTITY_NOT_PROVISIONED' ? 'identity_not_provisioned' : 'google_login_failed';

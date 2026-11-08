@@ -1,10 +1,10 @@
 import { User } from '../../Domain/Entities/User.js';
 
 export class LoginWithPassword {
-  constructor({ authRepository, passwordHasher, tokenService }) {
+  constructor({ authRepository, passwordHasher, sessionService }) {
     this.authRepository = authRepository;
     this.passwordHasher = passwordHasher;
-    this.tokenService = tokenService;
+    this.sessionService = sessionService;
   }
 
   async execute({ email, password }) {
@@ -16,7 +16,7 @@ export class LoginWithPassword {
       throw Object.assign(new Error('Invalid credentials'), { code: 'INVALID_CREDENTIALS' });
     }
     const user = new User({ userId: record.UserId, email: record.Email, displayName: record.DisplayName, role: record.Role, isActive: record.IsActive });
-    const accessToken = this.tokenService.issue(user.userId, record.AuthVersion || 0);
-    return { user: { userId: user.userId, email: user.email, displayName: user.displayName, role: user.role }, accessToken, expiresInSeconds: this.tokenService.lifetimeSeconds() };
+    const session = await this.sessionService.create({ UserId: user.userId, AuthVersion: record.AuthVersion || 0 });
+    return { user: { userId: user.userId, email: user.email, displayName: user.displayName, role: user.role }, ...session };
   }
 }
