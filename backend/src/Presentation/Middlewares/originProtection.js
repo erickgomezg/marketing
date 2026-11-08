@@ -10,10 +10,10 @@ function configuredOrigins() {
 export function createOriginProtection({ allowedOrigins = configuredOrigins() } = {}) {
   return function originProtection(request, response, next) {
     if (SAFE_METHODS.has(request.method)) return next();
-    // Bearer-token clients do not rely on ambient browser cookies and are not subject to CSRF checks.
-    if (!request.cookies?.amm_access) return next();
+    // Reject cross-origin browser mutations even on public endpoints such as login.
+    // Cookie-authenticated mutations must also carry an explicit allowed Origin.
     const origin = request.get('origin');
-    if (!origin || !allowedOrigins.has(origin)) {
+    if ((origin && !allowedOrigins.has(origin)) || (request.cookies?.amm_access && !origin)) {
       return response.status(403).json({ error: 'Origen de solicitud no permitido.' });
     }
     return next();

@@ -26,8 +26,13 @@ test('origin protection rejects missing Origin on cookie-authenticated mutations
   assert.equal(invoke(middleware).statusCode, 403);
 });
 
-test('origin protection allows safe methods and bearer-only requests', () => {
+test('origin protection allows safe methods and non-browser requests without Origin', () => {
   const middleware = createOriginProtection({ allowedOrigins: new Set(['https://marketing.example.com']) });
   assert.equal(invoke(middleware, { method: 'GET' }).nextCalled, true);
   assert.equal(invoke(middleware, { cookie: null }).nextCalled, true);
+});
+
+test('origin protection rejects cross-origin login requests without an existing cookie', () => {
+  const middleware = createOriginProtection({ allowedOrigins: new Set(['https://marketing.example.com']) });
+  assert.equal(invoke(middleware, { cookie: null, origin: 'https://attacker.example' }).statusCode, 403);
 });
