@@ -1,4 +1,6 @@
 import express from 'express';
+import { createOriginProtection } from './Presentation/Middlewares/originProtection.js';
+import { createRateLimiter } from './Presentation/Middlewares/rateLimiter.js';
 import { createSqlServerAdapter } from './Infrastructure/Database/Connection/sqlServer.js';
 import { createRedisAdapter } from './Infrastructure/Cache/redis.js';
 import { createMinioAdapter } from './Infrastructure/Storage/minio.js';
@@ -22,11 +24,19 @@ import { EmailOutboxDispatcher } from './Application/Services/EmailOutboxDispatc
 import { UserAdministrationService } from './Application/Services/UserAdministrationService.js';
 
 const app = express();
+// Trust the single Nginx reverse-proxy hop used by the Compose topology.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1));
 app.use(express.json({ limit: '256kb' }));
 app.use((request, _response, next) => {
   request.cookies = Object.fromEntries((request.headers.cookie || '').split(';').map((entry) => entry.trim().split(/=(.*)/s).slice(0, 2)).filter(([key, value]) => key && value));
   next();
 });
+app.use(createOriginProtection());
+app.use('/auth/login', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 5 }));
+app.use('/auth/forgot-password', createRateLimiter({ windowMs: 60 * 60 * 1000, max: 3 }));
+app.use('/auth/reset-password', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 }));
+app.use('/auth/invitation/validate', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20 }));
+app.use('/auth/invitation/accept', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 }));
 const authRepository = new SqlAuthRepository();
 const tokenService = new AccessTokenService();
 const authenticate = createAuthenticate({ authRepository });
