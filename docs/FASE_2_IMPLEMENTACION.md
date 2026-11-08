@@ -160,4 +160,4 @@ Cada token rotado se guarda en el historial. Si se vuelve a presentar, el proced
 
 ### Pendientes de integración
 
-Los procedimientos existentes de cambio de contraseña y desactivación incrementan `AuthVersion`, lo que invalida Access Tokens, pero aún debe añadirse revocación física de todas las filas de `AuthSession` en esos procedimientos para invalidar también Refresh Tokens. El procedimiento de cambio de rol debe revisarse igualmente para invalidar sesiones existentes. La ejecución de SQL Server y pruebas locales/CI no se ha realizado desde esta edición remota.
+Los procedimientos de cambio de contraseña, desactivación y cambio de rol incrementan `AuthVersion` y revocan las sesiones persistidas del usuario. Esto invalida tanto Access Tokens como Refresh Tokens. La ejecución de SQL Server real queda pendiente; la suite unitaria de backend sí fue ejecutada correctamente en GitHub Actions.
