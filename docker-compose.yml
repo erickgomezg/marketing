@@ -29,7 +29,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     expose: ["5432"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ${PGDATABASE:-ai_marketing_manager}"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -46,6 +46,8 @@ services:
       PGDATABASE: ${PGDATABASE:-ai_marketing_manager}
       PGUSER: ${PGUSER:-app_user}
       PGPASSWORD: ${PGPASSWORD:?Set PGPASSWORD in .env}
+      APP_DB_USER: ${APP_DB_USER:-ai_marketing_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in .env}
       PG_POOL_MAX: 2
     depends_on:
       postgres:
@@ -81,8 +83,8 @@ services:
       PGHOST: postgres
       PGPORT: 5432
       PGDATABASE: ${PGDATABASE:-ai_marketing_manager}
-      PGUSER: ${PGUSER:-app_user}
-      PGPASSWORD: ${PGPASSWORD:?Set PGPASSWORD in .env}
+      PGUSER: ${APP_DB_USER:-ai_marketing_app}
+      PGPASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in .env}
       PG_POOL_MAX: ${PG_POOL_MAX:-4}
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set AUTH_JWT_SECRET in .env}
       AUTH_ACCESS_TOKEN_MINUTES: ${AUTH_ACCESS_TOKEN_MINUTES:-15}
