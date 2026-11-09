@@ -12,7 +12,7 @@ const pool = await getPool();
 try {
   const role = await pool.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [appUser]);
   const roleSql = await pool.query(
-    'SELECT format($1, $2, $3) AS statement',
+    'SELECT format($1::text, $2::text, $3::text) AS statement',
     [
       role.rowCount
         ? 'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION'
@@ -34,7 +34,7 @@ try {
     'REVOKE EXECUTE ON FUNCTION public.usp_auth_bootstrapadministrator(character varying, character varying, character varying) FROM PUBLIC, %I',
   ];
   for (const template of grantStatements) {
-    const result = await pool.query('SELECT format($1, $2) AS statement', [template, appUser]);
+    const result = await pool.query('SELECT format($1::text, $2::text) AS statement', [template, appUser]);
     await pool.query(result.rows[0].statement);
   }
   console.log(JSON.stringify({ level: 'info', event: 'postgres_schema_applied', applicationRole: appUser }));
