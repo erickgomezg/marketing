@@ -5,7 +5,7 @@ const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
 const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
 const displayName = process.env.BOOTSTRAP_ADMIN_NAME?.trim();
 if (!email || !password || !displayName) throw new Error('Bootstrap requires BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD, and BOOTSTRAP_ADMIN_NAME');
-if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || password.length < 12 || displayName.length < 2) throw new Error('Bootstrap configuration is invalid');
+if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 12 || displayName.length < 2) throw new Error('Bootstrap configuration is invalid');
 const pool = await getPool();
 try {
   const passwordHash = await new Argon2PasswordHasher().hash(password);
