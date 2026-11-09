@@ -35,7 +35,7 @@ export class SessionService {
       expiresAt: new Date(Date.now() + days * 86400000),
     });
     const user = result.recordset?.[0];
-    if (!user) throw Object.assign(new Error('Invalid refresh token'), { code: 'INVALID_REFRESH_TOKEN' });
+    if (!user || user.ErrorCode || !user.UserId) throw Object.assign(new Error('Invalid refresh token'), { code: 'INVALID_REFRESH_TOKEN' });
     return {
       refreshToken: nextRefreshToken, accessToken: this.tokenService.issue(user.UserId, user.AuthVersion || 0, user.SessionId),
       accessExpiresInSeconds: this.tokenService.lifetimeSeconds(), refreshExpiresInSeconds: days * 86400,
