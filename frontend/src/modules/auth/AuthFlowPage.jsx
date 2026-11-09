@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function AuthFlowPage() {
   const location = useLocation();
@@ -12,6 +13,8 @@ export default function AuthFlowPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (!isInvite) return undefined;
@@ -53,7 +56,7 @@ export default function AuthFlowPage() {
     {isInvite && identity && <p>Invitación para {identity.displayName} ({identity.email}).</p>}
     {error && <div className="inline-notice" role="alert">{error}</div>}{message && <div className="inline-notice" role="status">{message}</div>}
     {location.pathname === '/forgot-password' ? <form className="user-form" onSubmit={submit}><label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" /></label><button className="button-primary" disabled={busy}>{busy ? 'Enviando…' : 'Enviar instrucciones'}</button></form>
-      : validInvite && token && <form className="user-form" onSubmit={submit}><label>Nueva contraseña<input type="password" name="password" minLength={12} maxLength={256} required autoComplete="new-password" /></label><label>Confirmar contraseña<input type="password" name="confirmPassword" minLength={12} maxLength={256} required autoComplete="new-password" /></label><small>Usa al menos 12 caracteres.</small><button className="button-primary" disabled={busy}>{busy ? 'Guardando…' : isInvite ? 'Activar cuenta' : 'Actualizar contraseña'}</button></form>}
+      : validInvite && token && <form className="user-form" onSubmit={submit}><label>Nueva contraseña<span className="password-input-wrap"><input type={showPassword ? "text" : "password"} name="password" minLength={12} maxLength={256} required autoComplete="new-password" /><button className="password-visibility" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label><label>Confirmar contraseña<span className="password-input-wrap"><input type={showConfirmPassword ? "text" : "password"} name="confirmPassword" minLength={12} maxLength={256} required autoComplete="new-password" /><button className="password-visibility" type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"} aria-pressed={showConfirmPassword}>{showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label><small>Usa al menos 12 caracteres.</small><button className="button-primary" disabled={busy}>{busy ? 'Guardando…' : isInvite ? 'Activar cuenta' : 'Actualizar contraseña'}</button></form>}
     {!token && (isInvite || isReset) && <div className="inline-notice" role="alert">El enlace no incluye un token válido.</div>}
     {message && <button className="button-primary" onClick={() => navigate('/')}>Ir a iniciar sesión</button>}
     <Link className="auth-google-link" to="/">Volver al inicio de sesión</Link>
