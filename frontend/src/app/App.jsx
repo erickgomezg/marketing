@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import AppShell from '../components/layout/AppShell.jsx';
 import AuthFlowPage from '../modules/auth/AuthFlowPage.jsx';
 
@@ -16,6 +17,7 @@ const SettingsPage = lazy(() => import('../modules/settings/SettingsPage.jsx'));
 function Login({ onLogin, notice = '' }) {
   const [error, setError] = useState(() => notice || (new URLSearchParams(window.location.search).has('auth_error') ? 'No se pudo iniciar sesión. Verifica tus credenciales o la cuenta vinculada.' : ''));
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const submit = async (event) => {
     event.preventDefault(); setError(''); setBusy(true);
     const form = new FormData(event.currentTarget);
@@ -27,7 +29,7 @@ function Login({ onLogin, notice = '' }) {
     } catch (cause) { setError(cause.message || 'No se pudo iniciar sesión.'); }
     finally { setBusy(false); }
   };
-  return <main className="auth-screen"><section className="auth-card"><span className="brand-mark">am</span><h1>Inicia sesión</h1><p>Ingresa a AI Marketing Manager con tu cuenta.</p>{error && <div className="inline-notice" role="alert">{error}</div>}<form className="user-form" onSubmit={submit}><label>Correo electrónico<input type="email" name="email" autoComplete="username" required /></label><label>Contraseña<input type="password" name="password" autoComplete="current-password" required /></label><button className="button-primary" disabled={busy}>{busy ? 'Ingresando…' : 'Ingresar'}</button></form><a className="auth-google-link" href="/api/auth/google">Continuar con Google</a><Link className="auth-google-link" to="/forgot-password">¿Olvidaste tu contraseña?</Link></section></main>;
+  return <main className="auth-screen"><section className="auth-card"><span className="brand-mark">am</span><h1>Inicia sesión</h1><p>Ingresa a AI Marketing Manager con tu cuenta.</p>{error && <div className="inline-notice" role="alert">{error}</div>}<form className="user-form" onSubmit={submit}><label>Correo electrónico<input type="email" name="email" autoComplete="username" required /></label><label>Contraseña<span className="password-input-wrap"><input type={showPassword ? "text" : "password"} name="password" autoComplete="current-password" required /><button className="password-visibility" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label><button className="button-primary" disabled={busy}>{busy ? 'Ingresando…' : 'Ingresar'}</button></form><a className="auth-google-link" href="/api/auth/google">Continuar con Google</a><Link className="auth-google-link" to="/forgot-password">¿Olvidaste tu contraseña?</Link></section></main>;
 }
 
 export default function App() {
