@@ -789,3 +789,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+
+/* Password visibility controls */
+.password-input-wrap { position: relative; display: block; width: 100%; }
+.password-input-wrap input { width: 100%; padding-right: 42px !important; }
+.password-visibility { position: absolute; top: 50%; right: 8px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; color: #858b98; background: transparent; cursor: pointer; transform: translateY(-50%); }
+.password-visibility:hover { color: #2773f5; background: #f0f5ff; }
+.password-visibility:focus-visible { outline: 2px solid #2773f5; outline-offset: 2px; }
