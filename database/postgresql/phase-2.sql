@@ -446,7 +446,8 @@ BEGIN
        SELECT user_id INTO v_user FROM public.auth_session WHERE session_id=v_session;
        UPDATE public.auth_session SET revoked_at=now() WHERE session_id=v_session AND revoked_at IS NULL;
        INSERT INTO public.audit_log(target_user_id,action,details) VALUES(v_user,'session.refresh_reuse_detected','Session revoked after reuse of a rotated refresh token');
-       RAISE EXCEPTION USING ERRCODE='P0001',MESSAGE='Refresh token reuse detected';
+       RETURN NEXT jsonb_build_object('ErrorCode','REFRESH_TOKEN_REUSE');
+       RETURN;
      END IF;
      RAISE EXCEPTION USING ERRCODE='P0001',MESSAGE='Refresh token is invalid or expired';
    END IF;

@@ -1,16 +1,16 @@
 import express from 'express';
 import { createOriginProtection } from './Presentation/Middlewares/originProtection.js';
 import { createRateLimiter } from './Presentation/Middlewares/rateLimiter.js';
-import { createSqlServerAdapter } from './Infrastructure/Database/Connection/sqlServer.js';
+import { createPostgresAdapter } from './Infrastructure/Database/Connection/postgres.js';
 import { createRedisAdapter } from './Infrastructure/Cache/redis.js';
 import { createMinioAdapter } from './Infrastructure/Storage/minio.js';
 import { createAuthRoutes } from './Presentation/Routes/googleAuthRoutes.js';
 import { createAccessRoutes } from './Presentation/Routes/accessRoutes.js';
 import { createAuthenticate, requireAdministrator } from './Presentation/Middlewares/authenticate.js';
-import { SqlAuthRepository } from './Infrastructure/Repositories/SqlAuthRepository.js';
-import { SqlSessionRepository } from './Infrastructure/Repositories/SqlSessionRepository.js';
+import { PostgresAuthRepository } from './Infrastructure/Repositories/PostgresAuthRepository.js';
+import { PostgresSessionRepository } from './Infrastructure/Repositories/PostgresSessionRepository.js';
 import { SessionService } from './Application/Services/SessionService.js';
-import { SqlAccessRepository } from './Infrastructure/Repositories/SqlAccessRepository.js';
+import { PostgresAccessRepository } from './Infrastructure/Repositories/PostgresAccessRepository.js';
 import { AccessService } from './Application/Services/AccessService.js';
 import { LoginWithPassword } from './Application/UseCases/LoginWithPassword.js';
 import { LoginWithGoogleIdentity } from './Application/UseCases/LoginWithGoogleIdentity.js';
@@ -18,7 +18,7 @@ import { Argon2PasswordHasher } from './Infrastructure/Security/Argon2PasswordHa
 import { AccessTokenService } from './Infrastructure/Security/AccessTokenService.js';
 import { GoogleOAuthProvider } from './Infrastructure/Providers/GoogleOAuthProvider.js';
 import { createAuthController } from './Presentation/Controllers/AuthController.js';
-import { SqlUserRepository } from './Infrastructure/Repositories/SqlUserRepository.js';
+import { PostgresUserRepository } from './Infrastructure/Repositories/PostgresUserRepository.js';
 import { OneTimeTokenService } from './Infrastructure/Security/OneTimeTokenService.js';
 import { OutboxEncryptor } from './Infrastructure/Security/OutboxEncryptor.js';
 import { SmtpEmailProvider } from './Infrastructure/Providers/SmtpEmailProvider.js';
@@ -39,28 +39,28 @@ app.use('/auth/reset-password', createRateLimiter({ windowMs: 15 * 60 * 1000, ma
 app.use('/auth/refresh', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 30 }));
 app.use('/auth/invitation/validate', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20 }));
 app.use('/auth/invitation/accept', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 }));
-const authRepository = new SqlAuthRepository();
+const authRepository = new PostgresAuthRepository();
 const tokenService = new AccessTokenService();
-const sessionService = new SessionService({ sessionRepository: new SqlSessionRepository(), tokenService });
+const sessionService = new SessionService({ sessionRepository: new PostgresSessionRepository(), tokenService });
 const authenticate = createAuthenticate({ authRepository });
 const loginWithPassword = new LoginWithPassword({ authRepository, passwordHasher: new Argon2PasswordHasher(), sessionService });
 const googleLogin = new LoginWithGoogleIdentity({ authRepository, sessionService });
-const userRepository = new SqlUserRepository();
+const userRepository = new PostgresUserRepository();
 const passwordHasher = new Argon2PasswordHasher();
 const encryptor = new OutboxEncryptor();
 const outboxDispatcher = new EmailOutboxDispatcher({ userRepository, encryptor, emailProvider: new SmtpEmailProvider() });
 const userAdministration = new UserAdministrationService({ userRepository, tokenService: new OneTimeTokenService(), passwordHasher, encryptor, outboxDispatcher });
 const authController = createAuthController({ loginWithPassword, userAdministration, sessionService });
 app.use('/auth', createAuthRoutes({ googleLogin, googleProvider: new GoogleOAuthProvider(), authController, authenticate }));
-app.use('/access', createAccessRoutes({ accessService: new AccessService({ accessRepository: new SqlAccessRepository(), userRepository, userAdministration }), authenticate, requireAdministrator }));
+app.use('/access', createAccessRoutes({ accessService: new AccessService({ accessRepository: new PostgresAccessRepository(), userRepository, userAdministration }), authenticate, requireAdministrator }));
 const port = Number(process.env.API_PORT || 3000);
-const adapters = { sqlserver: createSqlServerAdapter(), redis: createRedisAdapter(), minio: createMinioAdapter() };
+const adapters = { postgres: createPostgresAdapter(), redis: createRedisAdapter(), minio: createMinioAdapter() };
 app.get('/health', (_request, response) => response.status(200).json({ status: 'ok', service: 'api', timestamp: new Date().toISOString() }));
 app.get('/health/ready', async (_request, response) => {
   const results = await Promise.all(Object.entries(adapters).map(async ([name, adapter]) => {
     try { await adapter.check(); return [name, { status: 'available' }]; }
     catch (error) {
-      console.error(JSON.stringify({ level: 'error', event: 'dependency_check_failed', dependency: name, message: error.message }));
+      console.error(JSON.stringify({ level: 'error', event: 'dependency_check_failed', dependency: name, code: error.code || 'DEPENDENCY_UNAVAILABLE' }));
       return [name, { status: 'unavailable', message: 'Connection check failed' }];
     }
   }));
@@ -69,12 +69,12 @@ app.get('/health/ready', async (_request, response) => {
   response.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not_ready', dependencies, timestamp: new Date().toISOString() });
 });
 app.use((error, _request, response, _next) => {
-  console.error(JSON.stringify({ level: 'error', event: 'request_failed', code: error.number || error.code || 'INTERNAL_ERROR' }));
+  console.error(JSON.stringify({ level: 'error', event: 'request_failed', code: error.code || 'INTERNAL_ERROR' }));
   response.status(error.status || 500).json({ error: error.status === 503 ? 'Autenticación temporalmente no disponible.' : 'No fue posible procesar la solicitud.' });
 });
 const server = app.listen(port, '0.0.0.0', () => console.log(JSON.stringify({ level: 'info', event: 'api_started', port })));
 let closing = false;
-const outboxTimer = setInterval(() => { outboxDispatcher.dispatchPending().catch((error) => console.error(JSON.stringify({ level: 'warn', event: 'email_outbox_poll_failed', code: error.number || 'OUTBOX_UNAVAILABLE' }))); }, 30000);
+const outboxTimer = setInterval(() => { outboxDispatcher.dispatchPending().catch((error) => console.error(JSON.stringify({ level: 'warn', event: 'email_outbox_poll_failed', code: error.code || 'OUTBOX_UNAVAILABLE' }))); }, 30000);
 outboxTimer.unref();
 async function shutdown(signal) {
   if (closing) return;
