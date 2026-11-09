@@ -149,7 +149,7 @@ export const connections = [
 ];
 
 export const initialUsers = [
-  { id: 1, name: 'Sofía Ramírez', email: 'sofia@amorstudio.com', role: 'Administradora', status: 'Activo', joined: '12 feb, 2025', initials: 'SR', color: 'lavender' },
+  { id: 1, name: 'Josseline Lemus', email: 'josseline@amorstudio.com', role: 'Administradora', status: 'Activo', joined: '12 feb, 2025', initials: 'JL', color: 'lavender' },
   { id: 2, name: 'Daniel Méndez', email: 'daniel@amorstudio.com', role: 'Editor', status: 'Activo', joined: '08 mar, 2025', initials: 'DM', color: 'peach' },
   { id: 3, name: 'Lucía Herrera', email: 'lucia@amorstudio.com', role: 'Analista', status: 'Activo', joined: '21 abr, 2025', initials: 'LH', color: 'mint' },
   { id: 4, name: 'Mateo Cruz', email: 'mateo@amorstudio.com', role: 'Viewer', status: 'Invitado', joined: '02 oct, 2025', initials: 'MC', color: 'blue' },
