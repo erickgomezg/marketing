@@ -33,7 +33,7 @@ export default function WhatsAppPage() {
       const data = await request('/status');
       setConnection(data);
       setSelectedGroup(data.selectedGroup || null);
-      if (data.selectedGroup?.id) setGroupId(data.selectedGroup.id);
+      if (data.selectedGroup?.id) setGroupId(current => current || data.selectedGroup.id);
       setError('');
     } catch (err) { setError(err.message); }
   }, []);
