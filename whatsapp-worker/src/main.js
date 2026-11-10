@@ -18,13 +18,14 @@ let lastError = null;
 let reconnectTimer;
 let starting = false;
 
+app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'whatsapp-worker' }));
+
 app.use((req, res, next) => {
   const supplied = req.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!supplied || supplied !== internalToken) return res.status(401).json({ error: 'Unauthorized' });
   next();
 });
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'whatsapp-worker' }));
 app.get('/status', (_req, res) => res.json({ status, phoneNumber, qr: qrDataUrl, lastError }));
 app.post('/connect', async (_req, res) => {
   try { await startSocket(); res.status(202).json({ status }); }
