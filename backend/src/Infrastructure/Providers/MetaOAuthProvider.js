@@ -24,7 +24,7 @@ export class MetaOAuthProvider {
     const appSecret = required('META_APP_SECRET');
     const redirectUri = required('META_REDIRECT_URI');
     const version = process.env.META_GRAPH_API_VERSION || 'v27.0';
-    if (!/^v\\d+\\.\\d+$/.test(version)) throw new Error('META_GRAPH_API_VERSION_INVALID');
+    if (!/^v\d+\.\d+$/.test(version)) throw new Error('META_GRAPH_API_VERSION_INVALID');
     return { appId, appSecret, redirectUri, version };
   }
 
