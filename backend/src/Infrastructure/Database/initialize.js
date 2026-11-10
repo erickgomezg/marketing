@@ -26,6 +26,7 @@ try {
   const schemaFiles = [
     './StoredProcedures/postgresql-phase-2.sql',
     './StoredProcedures/postgresql-meta-integration.sql',
+    './StoredProcedures/postgresql-whatsapp.sql',
   ];
   for (const relativePath of schemaFiles) {
     const schemaPath = fileURLToPath(new URL(relativePath, import.meta.url));
@@ -38,6 +39,9 @@ try {
     'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO %I',
     'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO %I',
     'REVOKE EXECUTE ON FUNCTION public.usp_auth_bootstrapadministrator(character varying, character varying, character varying) FROM PUBLIC, %I',
+    'REVOKE EXECUTE ON FUNCTION public.usp_whatsapp_configuration_get() FROM PUBLIC, %I',
+    'GRANT EXECUTE ON FUNCTION public.usp_whatsapp_configuration_get() TO %I',
+    'GRANT EXECUTE ON FUNCTION public.usp_whatsapp_configuration_save(character varying, character varying, uuid) TO %I',
   ];
   for (const template of grantStatements) {
     const result = await pool.query('SELECT format($1::text, $2::text) AS statement', [template, appUser]);
