@@ -23,8 +23,14 @@ try {
   );
   await pool.query(roleSql.rows[0].statement);
 
-  const schemaPath = fileURLToPath(new URL('./StoredProcedures/postgresql-phase-2.sql', import.meta.url));
-  await pool.query(await readFile(schemaPath, 'utf8'));
+  const schemaFiles = [
+    './StoredProcedures/postgresql-phase-2.sql',
+    './StoredProcedures/postgresql-meta-integration.sql',
+  ];
+  for (const relativePath of schemaFiles) {
+    const schemaPath = fileURLToPath(new URL(relativePath, import.meta.url));
+    await pool.query(await readFile(schemaPath, 'utf8'));
+  }
 
   const grantStatements = [
     'GRANT USAGE ON SCHEMA public TO %I',
