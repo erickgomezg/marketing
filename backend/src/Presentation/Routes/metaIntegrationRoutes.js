@@ -15,7 +15,7 @@ export function createMetaIntegrationRoutes({ service, authenticate }) {
       const { state, url } = service.authorizationUrl({ userId: request.auth.UserId, businessId });
       response.cookie(COOKIE_NAME, state, {
         httpOnly: true, secure: request.secure, sameSite: 'lax',
-        path: '/integrations/meta/callback', maxAge: 10 * 60 * 1000,
+        path: '/api/integrations/meta/callback', maxAge: 10 * 60 * 1000,
       });
       return response.redirect(url);
     } catch (error) { return next(error); }
@@ -25,7 +25,7 @@ export function createMetaIntegrationRoutes({ service, authenticate }) {
     const stateCookie = request.cookies?.[COOKIE_NAME];
     response.clearCookie(COOKIE_NAME, {
       httpOnly: true, secure: request.secure, sameSite: 'lax',
-      path: '/integrations/meta/callback',
+      path: '/api/integrations/meta/callback',
     });
     if (request.query.error || typeof request.query.code !== 'string' || typeof request.query.state !== 'string' || !stateCookie) {
       return response.redirect('/settings/connections?meta=authorization_failed');
