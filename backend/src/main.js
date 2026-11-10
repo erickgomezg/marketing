@@ -7,6 +7,8 @@ import { createMinioAdapter } from './Infrastructure/Storage/minio.js';
 import { createAuthRoutes } from './Presentation/Routes/googleAuthRoutes.js';
 import { createAccessRoutes } from './Presentation/Routes/accessRoutes.js';
 import { createMetaIntegrationRoutes } from './Presentation/Routes/metaIntegrationRoutes.js';
+import { createWhatsAppIntegrationRoutes } from './Presentation/Routes/whatsappIntegrationRoutes.js';
+import { PostgresWhatsAppRepository } from './Infrastructure/Repositories/PostgresWhatsAppRepository.js';
 import { createAuthenticate, requireAdministrator } from './Presentation/Middlewares/authenticate.js';
 import { PostgresAuthRepository } from './Infrastructure/Repositories/PostgresAuthRepository.js';
 import { PostgresSessionRepository } from './Infrastructure/Repositories/PostgresSessionRepository.js';
@@ -66,6 +68,7 @@ const metaConnectionService = new MetaConnectionService({
   encryptor: new MetaTokenEncryptor(),
 });
 app.use('/integrations/meta', createMetaIntegrationRoutes({ service: metaConnectionService, authenticate }));
+app.use('/integrations/whatsapp', createWhatsAppIntegrationRoutes({ authenticate, requireAdministrator, repository: new PostgresWhatsAppRepository() }));
 
 const port = Number(process.env.API_PORT || 3000);
 const adapters = { postgres: createPostgresAdapter(), redis: createRedisAdapter(), minio: createMinioAdapter() };
