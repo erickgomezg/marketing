@@ -35,7 +35,7 @@ export async function executeFunction(name, values = []) {
   const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
   const result = await connection.query(`SELECT * FROM public.${name}(${placeholders})`, values);
   const recordset = result.rows.map((row) => row[Object.keys(row)[0]]);
-  return { recordset, rowsAffected: [recordset.length] };
+  return { recordset, rows: result.rows, rowsAffected: [recordset.length] };
 }
 
 export function createPostgresAdapter() {
