@@ -156,7 +156,10 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-    networks: [data]
+    dns:
+      - 66.228.62.5
+      - 173.230.128.5
+    networks: [data, whatsapp-egress]
 
   redis:
     image: redis:7.4-alpine
@@ -239,3 +242,5 @@ networks:
   web:
   data:
     internal: true
+  whatsapp-egress:
+    driver: bridge
