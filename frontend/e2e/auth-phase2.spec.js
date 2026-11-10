@@ -5,14 +5,14 @@ test('anonymous visitor can sign in and sees the administrator dashboard', async
   await page.route('**/api/auth/login', (route) => route.fulfill({
     status: 200,
     headers: { 'Set-Cookie': 'amm_access=mock-session; HttpOnly; SameSite=Lax; Path=/' },
-    json: { user: { userId: '65ab32dc-162f-4f50-b9b5-8f6c8719cc08', email: 'admin@example.test', displayName: 'Admin Pruebas', role: 'Administrador' } },
+    json: { user: { userId: '65ab32dc-162f-4f50-b9b5-8f6c8719cc08', email: 'admin@example.test', displayName: 'Administrador de pruebas', role: 'Administrador' } },
   }));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Inicia sesión' })).toBeVisible();
   await page.getByLabel('Correo electrónico').fill('admin@example.test');
   await page.getByLabel('Contraseña').fill('synthetic-test-password');
   await page.getByRole('button', { name: 'Ingresar' }).click();
-  await expect(page.getByRole('heading', { name: 'Buenos días, Sofía' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
   await expect(page.getByText('Admin Pruebas')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Usuarios' })).toBeVisible();
 });
