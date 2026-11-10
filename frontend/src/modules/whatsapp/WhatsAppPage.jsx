@@ -78,7 +78,7 @@ export default function WhatsAppPage() {
         <div className="card-heading"><div><h2>Conexión de WhatsApp</h2><p>Vincula el dispositivo mediante un código QR.</p></div><span className={`status-pill status-${statusColor}`}>{labels[connection?.status] || 'Consultando'}</span></div>
         <div className="whatsapp-connection">
           {connection?.qr && !connected ? <div className="whatsapp-qr"><img src={connection.qr} alt="Código QR para vincular WhatsApp" /><p>Abre WhatsApp en tu teléfono y escanea este código desde Dispositivos vinculados.</p></div> :
-            <div className="whatsapp-placeholder"><Smartphone size={36} /><strong>{connected ? 'Número vinculado' : 'Esperando conexión'}</strong><span>{connected ? connection.phoneNumber || 'Dispositivo conectado' : 'Genera un QR para vincular el número dedicado.'}</span></div>}
+            <div className={connected ? 'whatsapp-placeholder whatsapp-linked' : 'whatsapp-placeholder'}>{connected ? <><span className="whatsapp-linked-icon"><CheckCircle2 size={26}/></span><span className="whatsapp-linked-label">CONEXIÓN ACTIVA</span><strong>Número vinculado correctamente</strong><span className="whatsapp-linked-number"><Smartphone size={15}/>{connection.phoneNumber || 'Dispositivo conectado'}</span><span className="whatsapp-linked-caption">Tu cuenta está lista para enviar notificaciones</span></> : <><Smartphone size={36}/><strong>Esperando conexión</strong><span>Genera un QR para vincular el número dedicado.</span></>}</div>}
         </div>
         <div className="button-row">
           {!connected ? <button className="button-primary" disabled={busy || ['connecting', 'qr_required', 'reconnecting'].includes(connection?.status)} onClick={() => run(() => request('/connect', { method: 'POST' }), 'Solicitud de conexión iniciada.')}> <Wifi size={16}/> Conectar WhatsApp</button> :
@@ -86,14 +86,18 @@ export default function WhatsAppPage() {
           <button className="button-secondary" disabled={busy} onClick={loadStatus}><RefreshCw size={16}/> Actualizar estado</button>
         </div>
       </Card>
-      <Card className="chart-card">
-        <div className="card-heading"><div><h2>Grupo global</h2><p>Todos los avisos del sistema se enviarán únicamente a este grupo.</p></div><Users size={20}/></div>
-        {selectedGroup && <div className="selected-whatsapp-group"><strong>Grupo configurado</strong><span>{selectedGroup.name}</span></div>}
-        <div className="button-row">
-          <button className="button-secondary" disabled={!connected || busy} onClick={loadGroups}>Consultar mis grupos</button>
+      <Card className="chart-card whatsapp-notification-card">
+        <div className="card-heading"><div><h2>Selección de Grupo de Notificación</h2><p>Define el grupo predeterminado que recibirá las notificaciones automáticas del sistema.</p></div><Users size={20}/></div>
+        <div className="whatsapp-default-group">
+          <div className="whatsapp-default-group-heading"><span className="whatsapp-default-group-icon"><Users size={18}/></span><div><strong>Grupo predeterminado</strong><small>Destino de las notificaciones del sistema</small></div><span className={selectedGroup ? 'whatsapp-config-status is-configured' : 'whatsapp-config-status'}>{selectedGroup ? 'Configurado' : 'Pendiente'}</span></div>
+          {selectedGroup ? <div className="whatsapp-current-group"><span className="whatsapp-current-group-dot"/><div><strong>{selectedGroup.name}</strong><small>Este grupo está guardado como destino predeterminado.</small></div></div> : <p className="whatsapp-no-group">Todavía no has definido un grupo para recibir las notificaciones.</p>}
         </div>
-        {groups.length > 0 && <div className="form-field"><label htmlFor="whatsapp-group">Selecciona el grupo destinatario</label><select id="whatsapp-group" value={groupId} onChange={event => setGroupId(event.target.value)}><option value="">Seleccionar grupo...</option>{groups.map(group => <option key={group.id} value={group.id}>{group.subject} ({group.size} participantes)</option>)}</select><button className="button-primary" disabled={!groupId || busy} onClick={saveGroup}>Guardar grupo</button></div>}
-        <div className="whatsapp-test"><button className="button-secondary" disabled={!connected || !groupId || busy} onClick={() => run(() => request('/test', { method: 'POST', body: JSON.stringify({ groupId }) }), 'Mensaje de prueba enviado al grupo seleccionado.') }><Send size={16}/> Enviar mensaje de prueba</button></div>
+        <div className="whatsapp-group-config">
+          <div className="whatsapp-group-config-title"><strong>Configurar grupo</strong><span>Consulta los grupos de tu cuenta y selecciona uno.</span></div>
+          <div className="button-row"><button className="button-secondary" disabled={!connected || busy} onClick={loadGroups}><RefreshCw size={15}/> Consultar mis grupos</button></div>
+          {groups.length > 0 && <div className="form-field"><label htmlFor="whatsapp-group">Grupo que recibirá las notificaciones</label><select id="whatsapp-group" value={groupId} onChange={event => setGroupId(event.target.value)}><option value="">Seleccionar grupo...</option>{groups.map(group => <option key={group.id} value={group.id}>{group.subject} ({group.size} participantes)</option>)}</select><button className="button-primary" disabled={!connected || !groupId || busy} onClick={saveGroup}>Guardar grupo predeterminado</button></div>}
+        </div>
+        <div className="whatsapp-test"><div><strong>Prueba de notificación</strong><span>Envía un mensaje para comprobar que la integración funciona.</span></div><button className="button-secondary" disabled={!connected || !groupId || busy} onClick={() => run(() => request('/test', { method: 'POST', body: JSON.stringify({ groupId }) }), 'Mensaje de prueba enviado al grupo seleccionado.') }><Send size={16}/> Enviar mensaje de prueba</button></div>
       </Card>
     </div>
     {error && <div className="alert alert-error" role="alert">{error}</div>}
