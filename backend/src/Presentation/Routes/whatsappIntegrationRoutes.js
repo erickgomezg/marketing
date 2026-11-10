@@ -43,11 +43,17 @@ export function createWhatsAppIntegrationRoutes({ authenticate, requireAdministr
       res.json({ selectedGroup: { id: configuration.group_jid, name: configuration.group_name } });
     } catch (error) { res.status(error.status || 503).json({ error: 'No fue posible guardar el grupo.' }); }
   });
-  router.post('/test', async (_req, res) => {
+  router.post('/test', async (req, res) => {
     try {
-      const configuration = await repository.getConfiguration();
-      if (!configuration?.group_jid) return res.status(409).json({ error: 'Primero selecciona un grupo.' });
-      await worker('/send', { method: 'POST', body: JSON.stringify({ groupId: configuration.group_jid, text: '✅ AI Marketing Manager: conexión de WhatsApp configurada correctamente.' }) });
+      const requestedGroupId = req.body?.groupId;
+      const configuration = requestedGroupId ? null : await repository.getConfiguration();
+      const groupId = requestedGroupId || configuration?.group_jid;
+      if (!groupId) return res.status(409).json({ error: 'Primero selecciona un grupo.' });
+      if (requestedGroupId) {
+        const { groups } = await worker('/groups');
+        if (!groups.some(group => group.id === requestedGroupId)) return res.status(400).json({ error: 'El grupo seleccionado no está disponible en la cuenta vinculada.' });
+      }
+      await worker('/send', { method: 'POST', body: JSON.stringify({ groupId, text: '✅ AI Marketing Manager: conexión de WhatsApp configurada correctamente.' }) });
       res.status(202).json({ accepted: true });
     } catch (error) { res.status(error.status || 503).json({ error: 'No fue posible enviar el mensaje de prueba.' }); }
   });
