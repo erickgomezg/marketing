@@ -33,7 +33,7 @@ export default function WhatsAppPage() {
     try {
       const data = await request('/status');
       setConnection(data);
-      setSelectedGroup(data.selectedGroup || null);
+      setSelectedGroup(data.selectedGroup?.id ? { ...data.selectedGroup, name: data.selectedGroup.name || data.selectedGroup.groupName || '' } : null);
       if (data.selectedGroup?.id) setGroupId(current => current || data.selectedGroup.id);
       setError('');
     } catch (err) { setError(err.message); }
@@ -65,7 +65,7 @@ export default function WhatsAppPage() {
     if (!group) return;
     await run(async () => {
       const data = await request('/group', { method: 'PUT', body: JSON.stringify({ groupId: group.id, groupName: group.subject }) });
-      setSelectedGroup(data.selectedGroup);
+      setSelectedGroup(data.selectedGroup?.id ? data.selectedGroup : { id: group.id, name: group.subject });
       setGroupId(group.id);
       setShowGroupConfig(false);
     }, 'Grupo global guardado correctamente.');
@@ -94,7 +94,7 @@ export default function WhatsAppPage() {
         <div className="whatsapp-default-group">
           <div className="whatsapp-default-group-heading">
             <span className="whatsapp-default-group-icon"><Users size={18}/></span>
-            <div className="whatsapp-default-group-info"><strong>Grupo predeterminado</strong><span className="whatsapp-default-group-name">{selectedGroup?.name || 'Ningún grupo seleccionado'}</span><small>Destino de las notificaciones del sistema</small></div>
+            <div className="whatsapp-default-group-info"><strong>Grupo predeterminado</strong><span className="whatsapp-default-group-name">{selectedGroup?.name || (selectedGroup?.id ? 'Grupo guardado' : 'Ningún grupo seleccionado')}</span><small>Destino de las notificaciones del sistema</small></div>
             <span className={selectedGroup ? 'whatsapp-config-status is-configured' : 'whatsapp-config-status'}>{selectedGroup ? 'Configurado' : 'Pendiente'}</span>
             <button className="button-secondary whatsapp-configure-button" disabled={!connected || busy} onClick={() => { setShowGroupConfig(value => !value); if (!showGroupConfig && groups.length === 0) loadGroups(); }}><Settings2 size={15}/>{showGroupConfig ? 'Cerrar' : 'Configurar'}<ChevronDown size={14} className={showGroupConfig ? 'is-expanded' : ''}/></button>
           </div>
