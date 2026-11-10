@@ -108,6 +108,8 @@ services:
       META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION:-v27.0}
       META_SCOPES: ${META_SCOPES:-pages_show_list,pages_read_engagement,read_insights,pages_manage_posts,pages_read_user_content,pages_manage_engagement,instagram_basic,instagram_manage_insights,instagram_content_publish,instagram_manage_comments,ads_read}
       META_TOKEN_ENCRYPTION_KEY: ${META_TOKEN_ENCRYPTION_KEY:-}
+      WHATSAPP_WORKER_URL: http://whatsapp-worker:3100
+      WHATSAPP_INTERNAL_TOKEN: ${WHATSAPP_INTERNAL_TOKEN:?Set WHATSAPP_INTERNAL_TOKEN in .env}
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
@@ -122,7 +124,27 @@ services:
         condition: service_completed_successfully
       admin-bootstrap:
         condition: service_completed_successfully
-      redis:
+      whatsapp-worker:
+    image: ai-marketing-manager-whatsapp-worker:dev
+    build: ./whatsapp-worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3100
+      WHATSAPP_AUTH_PATH: /app/auth
+      WHATSAPP_INTERNAL_TOKEN: ${WHATSAPP_INTERNAL_TOKEN:?Set WHATSAPP_INTERNAL_TOKEN in .env}
+    volumes:
+      - whatsapp_auth:/app/auth
+    expose: ["3100"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [data]
+
+  redis:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
@@ -206,6 +228,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  whatsapp_auth:
   minio_data:
   # Legacy data is retained; this volume is intentionally not mounted by the PostgreSQL stack.
   sqlserver_data:
