@@ -1,6 +1,6 @@
 export default function HomePage() {
   return (
-    <main>
+    <main id="inicio">
       <nav className="nav">
         <a className="brand" href="/" aria-label="JL Creative Studio, inicio">
           <span className="brand-mark">JL</span>
@@ -63,7 +63,7 @@ export default function HomePage() {
       <footer className="footer">
         <a className="brand" href="/"><span className="brand-mark">JL</span><span>CREATIVE STUDIO</span></a>
         <p>© {new Date().getFullYear()} JL Creative Studio. Todos los derechos reservados.</p>
-        <a href="#inicio" onClick={(event) => { event.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Volver arriba ↑</a>
+        <a href="#inicio">Volver arriba ↑</a>
       </footer>
     </main>
   );
