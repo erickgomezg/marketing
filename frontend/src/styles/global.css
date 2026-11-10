@@ -824,3 +824,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .alert { margin-top: 12px; padding: 11px 13px; border-radius: 8px; font-size: 12px; }
 .alert-error { color: #a7353c; background: #fff0f0; }
 .alert-success { color: #16794b; background: #e8f7ef; }
+
+
+/* WhatsApp linked device identity */
+.whatsapp-connection:has(.whatsapp-linked) { border: 1px solid #bce8cf; background: linear-gradient(135deg, #f0fbf4 0%, #e3f7eb 55%, #f7fdf9 100%); }
+.whatsapp-linked { gap: 8px; padding: 24px 16px; }
+.whatsapp-linked-icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 2px; border: 1px solid #b8e7ca; border-radius: 17px; color: #fff !important; background: linear-gradient(145deg, #25d366, #128c4a); box-shadow: 0 7px 18px #128c4a2b; }
+.whatsapp-linked-label { color: #16834b !important; font-size: 9px !important; font-weight: 800; letter-spacing: 1.25px; }
+.whatsapp-linked strong { color: #145c37 !important; font-size: 16px !important; }
+.whatsapp-linked-number { display: inline-flex; align-items: center; gap: 7px; margin-top: 3px; padding: 8px 14px; border: 1px solid #bce8cf; border-radius: 999px; color: #126b3b !important; background: #fff; font-size: 13px !important; font-weight: 750; letter-spacing: .3px; }
+.whatsapp-linked-caption { color: #54836a !important; font-size: 11px !important; }
