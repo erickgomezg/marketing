@@ -1,6 +1,21 @@
+# Sitio institucional: dominio principal y www
 server {
     listen 80;
-    server_name _;
+    server_name jlcreativestudio.agency www.jlcreativestudio.agency;
+    client_max_body_size 20m;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# Aplicación AI Marketing Manager: subdominio agency
+server {
+    listen 80;
+    server_name agency.jlcreativestudio.agency;
     client_max_body_size 20m;
 
     location /api/ {
@@ -18,5 +33,6 @@ server {
         proxy_set_header Host $host;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
