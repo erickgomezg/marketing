@@ -19,7 +19,7 @@ RETURNS TABLE(group_jid varchar, group_name varchar, updated_at timestamptz)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
 BEGIN
-  IF p_group_jid IS NOT NULL AND (p_group_jid !~ '^[0-9]+-[0-9]+@g\.us$' OR length(trim(coalesce(p_group_name, ''))) = 0) THEN
+  IF p_group_jid IS NOT NULL AND (p_group_jid !~ '^[0-9]+(-[0-9]+)?@g\.us$' OR length(trim(coalesce(p_group_name, ''))) = 0) THEN
     RAISE EXCEPTION 'INVALID_WHATSAPP_GROUP';
   END IF;
   RETURN QUERY
