@@ -57,7 +57,7 @@ export default function HomePage() {
         <p className="eyebrow">03 — EMPECEMOS</p>
         <h2>Hagamos algo <em>extraordinario.</em></h2>
         <p>Cuéntanos qué tienes en mente. Estamos listos para conocer tu proyecto.</p>
-        <a className="button button-light" href="mailto:hola@jlcreativestudio.agency?subject=Quiero%20conversar%20sobre%20mi%20proyecto">Solicitar información <span aria-hidden="true">↗</span></a>
+        <p className="contact-note">El formulario para solicitudes y cotizaciones se integrará en la siguiente etapa.</p>
       </section>
 
       <footer className="footer">
