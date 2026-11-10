@@ -1,6 +1,25 @@
 name: ai-marketing-manager
 
 services:
+  website:
+    image: jl-creative-studio-website:dev
+    build:
+      context: ./website
+      target: runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    expose: ["3000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [web]
+
   frontend:
     image: ai-marketing-manager-frontend:dev
     build:
@@ -221,6 +240,8 @@ services:
       NGINX_ENVSUBST_FILTER: ^API_PORT$
     depends_on:
       frontend:
+        condition: service_healthy
+      website:
         condition: service_healthy
       backend:
         condition: service_healthy
