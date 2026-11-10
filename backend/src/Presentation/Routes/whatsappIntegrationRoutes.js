@@ -39,7 +39,7 @@ export function createWhatsAppIntegrationRoutes({ authenticate, requireAdministr
       const { groups } = await worker('/groups');
       const selected = groups.find(group => group.id === groupId && group.subject === groupName);
       if (!selected) return res.status(400).json({ error: 'El grupo seleccionado no está disponible en la cuenta vinculada.' });
-      const configuration = await repository.saveConfiguration({ groupId, groupName, userId: req.auth.UserId });
+      const configuration = await repository.saveConfiguration({ groupId, groupName, userId: req.auth.UserId || req.auth.userId || req.auth.id });
       res.json({ selectedGroup: { id: configuration.group_jid, name: configuration.group_name } });
     } catch (error) { res.status(error.status || 503).json({ error: 'No fue posible guardar el grupo.' }); }
   });
