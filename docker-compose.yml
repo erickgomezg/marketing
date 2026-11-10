@@ -115,6 +115,7 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
       APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost}
+      APP_ALLOWED_ORIGINS: ${APP_ALLOWED_ORIGINS:-https://agency.jlcreativestudio.agency,https://jlcreativestudio.agency,https://www.jlcreativestudio.agency}
       INVITATION_TTL_HOURS: ${INVITATION_TTL_HOURS:-72}
       PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-30}
       DEV_RETURN_ACTION_LINKS: ${DEV_RETURN_ACTION_LINKS:-false}
