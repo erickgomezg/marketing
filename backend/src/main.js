@@ -44,6 +44,7 @@ app.use('/auth/reset-password', createRateLimiter({ windowMs: 15 * 60 * 1000, ma
 app.use('/auth/refresh', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 30 }));
 app.use('/auth/invitation/validate', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20 }));
 app.use('/auth/invitation/accept', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 }));
+app.use('/integrations/meta/connect', createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 }));
 const authRepository = new PostgresAuthRepository();
 const tokenService = new AccessTokenService();
 const sessionService = new SessionService({ sessionRepository: new PostgresSessionRepository(), tokenService });
