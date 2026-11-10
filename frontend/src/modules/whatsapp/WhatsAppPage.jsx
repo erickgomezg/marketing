@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, MessageCircle, RefreshCw, Send, Smartphone, Wifi, WifiOff, Users } from 'lucide-react';
+import { CheckCircle2, ChevronDown, MessageCircle, RefreshCw, Send, Settings2, Smartphone, Wifi, WifiOff, Users } from 'lucide-react';
 import { Card, PageTitle } from '../../components/common/UI.jsx';
 
 const API = '/api/integrations/whatsapp';
@@ -24,6 +24,7 @@ export default function WhatsAppPage() {
   const [groups, setGroups] = useState([]);
   const [groupId, setGroupId] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const [showGroupConfig, setShowGroupConfig] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -65,6 +66,8 @@ export default function WhatsAppPage() {
     await run(async () => {
       const data = await request('/group', { method: 'PUT', body: JSON.stringify({ groupId: group.id, groupName: group.subject }) });
       setSelectedGroup(data.selectedGroup);
+      setGroupId(group.id);
+      setShowGroupConfig(false);
     }, 'Grupo global guardado correctamente.');
   }
 
@@ -89,13 +92,18 @@ export default function WhatsAppPage() {
       <Card className="chart-card whatsapp-notification-card">
         <div className="card-heading"><div><h2>Selección de Grupo de Notificación</h2><p>Define el grupo predeterminado que recibirá las notificaciones automáticas del sistema.</p></div><Users size={20}/></div>
         <div className="whatsapp-default-group">
-          <div className="whatsapp-default-group-heading"><span className="whatsapp-default-group-icon"><Users size={18}/></span><div><strong>Grupo predeterminado</strong><small>Destino de las notificaciones del sistema</small></div><span className={selectedGroup ? 'whatsapp-config-status is-configured' : 'whatsapp-config-status'}>{selectedGroup ? 'Configurado' : 'Pendiente'}</span></div>
-          {selectedGroup ? <div className="whatsapp-current-group"><span className="whatsapp-current-group-dot"/><div><strong>{selectedGroup.name}</strong><small>Este grupo está guardado como destino predeterminado.</small></div></div> : <p className="whatsapp-no-group">Todavía no has definido un grupo para recibir las notificaciones.</p>}
-        </div>
-        <div className="whatsapp-group-config">
-          <div className="whatsapp-group-config-title"><strong>Configurar grupo</strong><span>Consulta los grupos de tu cuenta y selecciona uno.</span></div>
-          <div className="button-row"><button className="button-secondary" disabled={!connected || busy} onClick={loadGroups}><RefreshCw size={15}/> Consultar mis grupos</button></div>
-          {groups.length > 0 && <div className="form-field"><label htmlFor="whatsapp-group">Grupo que recibirá las notificaciones</label><select id="whatsapp-group" value={groupId} onChange={event => setGroupId(event.target.value)}><option value="">Seleccionar grupo...</option>{groups.map(group => <option key={group.id} value={group.id}>{group.subject} ({group.size} participantes)</option>)}</select><button className="button-primary" disabled={!connected || !groupId || busy} onClick={saveGroup}>Guardar grupo predeterminado</button></div>}
+          <div className="whatsapp-default-group-heading">
+            <span className="whatsapp-default-group-icon"><Users size={18}/></span>
+            <div className="whatsapp-default-group-info"><strong>Grupo predeterminado</strong><span className="whatsapp-default-group-name">{selectedGroup?.name || 'Ningún grupo seleccionado'}</span><small>Destino de las notificaciones del sistema</small></div>
+            <span className={selectedGroup ? 'whatsapp-config-status is-configured' : 'whatsapp-config-status'}>{selectedGroup ? 'Configurado' : 'Pendiente'}</span>
+            <button className="button-secondary whatsapp-configure-button" disabled={!connected || busy} onClick={() => { setShowGroupConfig(value => !value); if (!showGroupConfig && groups.length === 0) loadGroups(); }}><Settings2 size={15}/>{showGroupConfig ? 'Cerrar' : 'Configurar'}<ChevronDown size={14} className={showGroupConfig ? 'is-expanded' : ''}/></button>
+          </div>
+          {selectedGroup ? <div className="whatsapp-current-group"><span className="whatsapp-current-group-dot"/><span>Este grupo está guardado como destino predeterminado.</span></div> : <p className="whatsapp-no-group">Configura un grupo para comenzar a recibir las notificaciones del sistema.</p>}
+          {showGroupConfig && <div className="whatsapp-group-config">
+            <div className="whatsapp-group-config-title"><strong>Configurar grupo de notificación</strong><span>Selecciona uno de los grupos disponibles en tu cuenta de WhatsApp.</span></div>
+            <div className="button-row"><button className="button-secondary" disabled={!connected || busy} onClick={loadGroups}><RefreshCw size={15}/> Actualizar listado de grupos</button></div>
+            {groups.length > 0 ? <div className="form-field"><label htmlFor="whatsapp-group">Grupo que recibirá las notificaciones</label><select id="whatsapp-group" value={groupId} onChange={event => setGroupId(event.target.value)}><option value="">Seleccionar grupo...</option>{groups.map(group => <option key={group.id} value={group.id}>{group.subject} ({group.size} participantes)</option>)}</select><button className="button-primary" disabled={!connected || !groupId || busy} onClick={saveGroup}>Guardar grupo predeterminado</button></div> : <p className="whatsapp-no-group">No se encontraron grupos. Actualiza el listado para intentarlo nuevamente.</p>}
+          </div>}
         </div>
         <div className="whatsapp-test"><div><strong>Prueba de notificación</strong><span>Envía un mensaje para comprobar que la integración funciona.</span></div><button className="button-secondary" disabled={!connected || !groupId || busy} onClick={() => run(() => request('/test', { method: 'POST', body: JSON.stringify({ groupId }) }), 'Mensaje de prueba enviado al grupo seleccionado.') }><Send size={16}/> Enviar mensaje de prueba</button></div>
       </Card>
