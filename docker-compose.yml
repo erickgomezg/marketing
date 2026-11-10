@@ -102,6 +102,12 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost/api/auth/google/callback}
+      META_APP_ID: ${META_APP_ID:-}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      META_REDIRECT_URI: ${META_REDIRECT_URI:-}
+      META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION:-v27.0}
+      META_SCOPES: ${META_SCOPES:-pages_show_list,pages_read_engagement,read_insights,pages_manage_posts,pages_read_user_content,pages_manage_engagement,instagram_basic,instagram_manage_insights,instagram_content_publish,instagram_manage_comments,ads_read}
+      META_TOKEN_ENCRYPTION_KEY: ${META_TOKEN_ENCRYPTION_KEY:-}
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
