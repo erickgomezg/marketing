@@ -6,6 +6,7 @@ import { createRedisAdapter } from './Infrastructure/Cache/redis.js';
 import { createMinioAdapter } from './Infrastructure/Storage/minio.js';
 import { createAuthRoutes } from './Presentation/Routes/googleAuthRoutes.js';
 import { createAccessRoutes } from './Presentation/Routes/accessRoutes.js';
+import { createMetaIntegrationRoutes } from './Presentation/Routes/metaIntegrationRoutes.js';
 import { createAuthenticate, requireAdministrator } from './Presentation/Middlewares/authenticate.js';
 import { PostgresAuthRepository } from './Infrastructure/Repositories/PostgresAuthRepository.js';
 import { PostgresSessionRepository } from './Infrastructure/Repositories/PostgresSessionRepository.js';
@@ -17,6 +18,10 @@ import { LoginWithGoogleIdentity } from './Application/UseCases/LoginWithGoogleI
 import { Argon2PasswordHasher } from './Infrastructure/Security/Argon2PasswordHasher.js';
 import { AccessTokenService } from './Infrastructure/Security/AccessTokenService.js';
 import { GoogleOAuthProvider } from './Infrastructure/Providers/GoogleOAuthProvider.js';
+import { MetaOAuthProvider } from './Infrastructure/Providers/MetaOAuthProvider.js';
+import { MetaTokenEncryptor } from './Infrastructure/Security/MetaTokenEncryptor.js';
+import { PostgresMetaConnectionRepository } from './Infrastructure/Repositories/PostgresMetaConnectionRepository.js';
+import { MetaConnectionService } from './Application/Services/MetaConnectionService.js';
 import { createAuthController } from './Presentation/Controllers/AuthController.js';
 import { PostgresUserRepository } from './Infrastructure/Repositories/PostgresUserRepository.js';
 import { OneTimeTokenService } from './Infrastructure/Security/OneTimeTokenService.js';
@@ -53,6 +58,14 @@ const userAdministration = new UserAdministrationService({ userRepository, token
 const authController = createAuthController({ loginWithPassword, userAdministration, sessionService });
 app.use('/auth', createAuthRoutes({ googleLogin, googleProvider: new GoogleOAuthProvider(), authController, authenticate }));
 app.use('/access', createAccessRoutes({ accessService: new AccessService({ accessRepository: new PostgresAccessRepository(), userRepository, userAdministration }), authenticate, requireAdministrator }));
+
+const metaConnectionService = new MetaConnectionService({
+  provider: new MetaOAuthProvider(),
+  repository: new PostgresMetaConnectionRepository(),
+  encryptor: new MetaTokenEncryptor(),
+});
+app.use('/integrations/meta', createMetaIntegrationRoutes({ service: metaConnectionService, authenticate }));
+
 const port = Number(process.env.API_PORT || 3000);
 const adapters = { postgres: createPostgresAdapter(), redis: createRedisAdapter(), minio: createMinioAdapter() };
 app.get('/health', (_request, response) => response.status(200).json({ status: 'ok', service: 'api', timestamp: new Date().toISOString() }));
