@@ -864,3 +864,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .whatsapp-test { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
 .whatsapp-test > div { display:grid; gap:4px; }
 @media(max-width:640px) { .whatsapp-test { align-items:flex-start; flex-direction:column; } }
+
+
+/* Interactive default WhatsApp notification group */
+.whatsapp-default-group-heading { align-items:center; flex-wrap:wrap; }
+.whatsapp-default-group-info { display:grid; gap:4px; min-width:180px; }
+.whatsapp-default-group-info > strong { color:#24583a; font-size:12px; }
+.whatsapp-default-group-name { color:#128c4a; font-size:13px; font-weight:750; overflow-wrap:anywhere; }
+.whatsapp-default-group-info > small { color:#779181; font-size:10px; }
+.whatsapp-configure-button { margin-left:auto; display:inline-flex; align-items:center; gap:7px; white-space:nowrap; border-color:#bce8cf !important; color:#147b43 !important; background:#fff !important; }
+.whatsapp-configure-button:hover { border-color:#25b866 !important; background:#effbf3 !important; }
+.whatsapp-configure-button .is-expanded { transform:rotate(180deg); }
+.whatsapp-current-group { align-items:center; }
+.whatsapp-current-group > span:last-child { color:#54836a; font-size:10px; }
+.whatsapp-group-config { margin-top:15px; padding:16px; border:1px solid #d9eee1; border-radius:10px; background:#fff; }
+.whatsapp-group-config .button-row { margin:12px 0; }
+.whatsapp-group-config .form-field { margin-top:12px; }
+@media(max-width:640px) {
+  .whatsapp-configure-button { margin-left:0; }
+  .whatsapp-default-group-heading { align-items:flex-start; }
+}
