@@ -17,6 +17,7 @@ let phoneNumber = null;
 let lastError = null;
 let reconnectTimer;
 let starting = false;
+let manualDisconnect = false;
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'whatsapp-worker' }));
 
@@ -33,7 +34,9 @@ app.post('/connect', async (_req, res) => {
 });
 app.post('/disconnect', async (_req, res) => {
   clearTimeout(reconnectTimer);
+  manualDisconnect = true;
   if (socket) { socket.end(undefined); socket = undefined; }
+  starting = false;
   status = 'disconnected'; qrDataUrl = null; phoneNumber = null;
   res.json({ status });
 });
@@ -41,7 +44,7 @@ app.get('/groups', async (_req, res) => {
   if (status !== 'connected' || !socket) return res.status(409).json({ error: 'WhatsApp is not connected' });
   try {
     const groups = await socket.groupFetchAllParticipating();
-    res.json({ groups: Object.values(groups).map(group => ({ id: group.id, subject: group.subject, size: group.size || group.participants?.length || 0 })).sort((a, b) => a.subject.localeCompare(b.subject)) });
+    res.json({ groups: Object.values(groups).map(group => ({ id: group.id, subject: group.subject, size: group.size || group.participants?.length || 0 })).sort((a, b) => (a.subject || '').localeCompare(b.subject || '')) });
   } catch { res.status(503).json({ error: 'Unable to retrieve groups' }); }
 });
 app.post('/send', async (req, res) => {
@@ -56,6 +59,7 @@ app.post('/send', async (req, res) => {
 
 async function startSocket() {
   if (starting || status === 'connected' || status === 'connecting') return;
+  manualDisconnect = false;
   starting = true; status = 'connecting'; lastError = null;
   try {
     const { state, saveCreds } = await useMultiFileAuthState(authPath);
@@ -81,6 +85,7 @@ async function startSocket() {
       if (update.connection === 'close') {
         const code = update.lastDisconnect?.error?.output?.statusCode;
         socket = undefined; qrDataUrl = null; phoneNumber = null; starting = false;
+        if (manualDisconnect) { status = 'disconnected'; return; }
         if (code === DisconnectReason.loggedOut) { status = 'logged_out'; return; }
         status = 'reconnecting';
         clearTimeout(reconnectTimer);
