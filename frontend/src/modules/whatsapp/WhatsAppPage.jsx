@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { MessageCircle, RefreshCw, Send, Smartphone, Wifi, WifiOff, Users } from 'lucide-react';
+import { CheckCircle2, MessageCircle, RefreshCw, Send, Smartphone, Wifi, WifiOff, Users } from 'lucide-react';
 import { Card, PageTitle } from '../../components/common/UI.jsx';
 
 const API = '/api/integrations/whatsapp';
@@ -93,7 +93,7 @@ export default function WhatsAppPage() {
           <button className="button-secondary" disabled={!connected || busy} onClick={loadGroups}>Consultar mis grupos</button>
         </div>
         {groups.length > 0 && <div className="form-field"><label htmlFor="whatsapp-group">Selecciona el grupo destinatario</label><select id="whatsapp-group" value={groupId} onChange={event => setGroupId(event.target.value)}><option value="">Seleccionar grupo...</option>{groups.map(group => <option key={group.id} value={group.id}>{group.subject} ({group.size} participantes)</option>)}</select><button className="button-primary" disabled={!groupId || busy} onClick={saveGroup}>Guardar grupo</button></div>}
-        <div className="whatsapp-test"><button className="button-secondary" disabled={!connected || !selectedGroup || busy} onClick={() => run(() => request('/test', { method: 'POST' }), 'Mensaje de prueba enviado al grupo.') }><Send size={16}/> Enviar mensaje de prueba</button></div>
+        <div className="whatsapp-test"><button className="button-secondary" disabled={!connected || !groupId || busy} onClick={() => run(() => request('/test', { method: 'POST', body: JSON.stringify({ groupId }) }), 'Mensaje de prueba enviado al grupo seleccionado.') }><Send size={16}/> Enviar mensaje de prueba</button></div>
       </Card>
     </div>
     {error && <div className="alert alert-error" role="alert">{error}</div>}
