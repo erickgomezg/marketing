@@ -79,7 +79,9 @@ BEGIN
     WHERE b.business_id=p_business_id AND b.status='Active'
       AND (u.role='Administrador' OR EXISTS (
         SELECT 1 FROM public.user_business_platform_permission p
+        JOIN public.social_platform sp ON sp.social_platform_id=p.social_platform_id
         WHERE p.user_id=p_user_id AND p.business_id=p_business_id AND p.is_active
+          AND sp.code IN ('facebook','instagram')
       ))
   ) THEN
     RAISE EXCEPTION USING ERRCODE='42501', MESSAGE='User cannot access this business';
