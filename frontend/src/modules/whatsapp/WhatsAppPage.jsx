@@ -33,8 +33,18 @@ export default function WhatsAppPage() {
     try {
       const data = await request('/status');
       setConnection(data);
-      setSelectedGroup(data.selectedGroup?.id ? { ...data.selectedGroup, name: data.selectedGroup.name || data.selectedGroup.groupName || '' } : null);
-      if (data.selectedGroup?.id) setGroupId(current => current || data.selectedGroup.id);
+      // A group configuration is only valid while the WhatsApp device is linked.
+      // Hide stale selections immediately after logout/disconnect while polling
+      // waits for the next QR emitted by Baileys.
+      if (data.status === 'connected') {
+        setSelectedGroup(data.selectedGroup?.id ? { ...data.selectedGroup, name: data.selectedGroup.name || data.selectedGroup.groupName || '' } : null);
+        if (data.selectedGroup?.id) setGroupId(current => current || data.selectedGroup.id);
+      } else {
+        setSelectedGroup(null);
+        setGroupId('');
+        setGroups([]);
+        setShowGroupConfig(false);
+      }
       setError('');
     } catch (err) { setError(err.message); }
   }, []);
@@ -72,6 +82,7 @@ export default function WhatsAppPage() {
   }
 
   const connected = connection?.status === 'connected';
+  const pairingInProgress = ['connecting', 'qr_required', 'reconnecting'].includes(connection?.status);
   const statusColor = connected ? 'success' : connection?.status === 'error' || connection?.status === 'logged_out' ? 'danger' : 'warning';
 
   return <div className="page whatsapp-page">
@@ -84,7 +95,7 @@ export default function WhatsAppPage() {
             <div className={connected ? 'whatsapp-placeholder whatsapp-linked' : 'whatsapp-placeholder'}>{connected ? <><span className="whatsapp-linked-icon"><CheckCircle2 size={26}/></span><span className="whatsapp-linked-label">CONEXIÓN ACTIVA</span><strong>Número vinculado correctamente</strong><span className="whatsapp-linked-number"><Smartphone size={15}/>{connection.phoneNumber || 'Dispositivo conectado'}</span><span className="whatsapp-linked-caption">Tu cuenta está lista para enviar notificaciones</span></> : <><Smartphone size={36}/><strong>Esperando conexión</strong><span>Genera un QR para vincular el número dedicado.</span></>}</div>}
         </div>
         <div className="button-row">
-          {!connected ? <button className="button-primary" disabled={busy || ['connecting', 'qr_required', 'reconnecting'].includes(connection?.status)} onClick={() => run(() => request('/connect', { method: 'POST' }), 'Solicitud de conexión iniciada.')}> <Wifi size={16}/> Conectar WhatsApp</button> :
+          {!connected ? <button className="button-primary" disabled={busy || pairingInProgress} onClick={() => run(() => request('/connect', { method: 'POST' }), 'Solicitud de conexión iniciada. El QR aparecerá automáticamente cuando WhatsApp lo genere.')}> <Wifi size={16}/> Conectar WhatsApp</button> :
             <button className="button-secondary" disabled={busy} onClick={() => run(() => request('/disconnect', { method: 'POST' }), 'Número desvinculado. Generando un nuevo código QR...')}><WifiOff size={16}/> Desconectar</button>}
           <button className="button-secondary" disabled={busy} onClick={loadStatus}><RefreshCw size={16}/> Actualizar estado</button>
         </div>
