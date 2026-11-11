@@ -124,17 +124,30 @@ async function startSocket() {
       // Ignora eventos tardíos del socket que acabamos de desvincular.
       if (socket !== client || thisLifecycle !== lifecycle) return;
       if (update.qr) {
-        try { qrDataUrl = await QRCode.toDataURL(update.qr); status = 'qr_required'; }
-        catch { lastError = 'QR_GENERATION_FAILED'; status = 'error'; }
+        try {
+          const generatedQr = await QRCode.toDataURL(update.qr);
+          if (socket !== client || thisLifecycle !== lifecycle) return;
+          qrDataUrl = generatedQr;
+          status = 'qr_required';
+          starting = false;
+          console.log(JSON.stringify({ level: 'info', event: 'whatsapp_qr_generated' }));
+        } catch (error) {
+          lastError = 'QR_GENERATION_FAILED';
+          status = 'error';
+          starting = false;
+          console.error(JSON.stringify({ level: 'error', event: 'whatsapp_qr_generation_failed', message: error?.message || 'unknown' }));
+        }
       }
       if (update.connection === 'open') {
         status = 'connected'; qrDataUrl = null;
         phoneNumber = client.user?.id?.split(':')[0] || null;
         lastError = null; starting = false;
+        console.log(JSON.stringify({ level: 'info', event: 'whatsapp_connected', phoneNumber }));
       }
       if (update.connection === 'close') {
         const code = update.lastDisconnect?.error?.output?.statusCode;
         socket = undefined; qrDataUrl = null; phoneNumber = null; starting = false;
+        console.warn(JSON.stringify({ level: 'warn', event: 'whatsapp_connection_closed', code: code || null, manualDisconnect }));
         if (manualDisconnect) { status = 'disconnected'; return; }
         if (code === DisconnectReason.loggedOut) { status = 'logged_out'; return; }
         status = 'reconnecting';
@@ -145,6 +158,7 @@ async function startSocket() {
   } catch (error) {
     if (thisLifecycle === lifecycle) {
       starting = false; status = 'error'; lastError = error?.code || 'CONNECTION_START_FAILED';
+      console.error(JSON.stringify({ level: 'error', event: 'whatsapp_connection_start_failed', code: error?.code || null, message: error?.message || 'unknown' }));
     }
     throw error;
   }
