@@ -1,7 +1,8 @@
 import express from 'express';
 import pino from 'pino';
 import QRCode from 'qrcode';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, readdir, rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from '@whiskeysockets/baileys';
 
 const app = express();
@@ -63,18 +64,22 @@ app.post('/disconnect', async (_req, res) => {
 
     // El volumen persiste entre despliegues, pero un cambio explícito de número
     // debe iniciar con un estado de autenticación limpio.
-    await rm(authPath, { recursive: true, force: true });
     await mkdir(authPath, { recursive: true });
+    const authEntries = await readdir(authPath);
+    await Promise.all(authEntries.map(entry =>
+      rm(join(authPath, entry), { recursive: true, force: true })
+    ));
 
     manualDisconnect = false;
     status = 'disconnected';
     await startSocket();
     res.status(202).json({ status, message: 'Previous device unlinked; new QR pairing started.' });
-  } catch {
+  } catch (error) {
+    console.error(JSON.stringify({ level: 'error', event: 'whatsapp_pairing_reset_failed', code: error?.code || null, message: error?.message || 'unknown' }));
     manualDisconnect = false;
     starting = false;
     status = 'error';
-    lastError = 'PAIRING_RESET_FAILED';
+    lastError = error?.code || 'PAIRING_RESET_FAILED';
     res.status(503).json({ error: 'Unable to reset WhatsApp pairing. Retry the connection.' });
   }
 });
