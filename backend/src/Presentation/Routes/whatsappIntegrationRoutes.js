@@ -17,7 +17,9 @@ export function createWhatsAppIntegrationRoutes({ authenticate, requireAdministr
   router.use(authenticate, requireAdministrator);
   router.get('/status', async (_req, res) => {
     try {
-      const [connection, configuration] = await Promise.all([worker('/status'), repository.getConfiguration()]);
+      const connection = await worker('/status');
+      // A stored destination must never appear active without a linked device.
+      const configuration = connection.status === 'connected' ? await repository.getConfiguration() : null;
       res.json({ ...connection, selectedGroup: configuration ? { id: configuration.group_jid, name: configuration.group_name } : null });
     } catch (error) { res.status(error.status || 503).json({ error: 'No fue posible consultar WhatsApp.' }); }
   });
@@ -45,6 +47,8 @@ export function createWhatsAppIntegrationRoutes({ authenticate, requireAdministr
   });
   router.post('/test', async (req, res) => {
     try {
+      const connection = await worker('/status');
+      if (connection.status !== 'connected') return res.status(409).json({ error: 'Vincula un número de WhatsApp antes de enviar notificaciones.' });
       const requestedGroupId = req.body?.groupId;
       const configuration = requestedGroupId ? null : await repository.getConfiguration();
       const groupId = requestedGroupId || configuration?.group_jid;
