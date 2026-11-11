@@ -28,8 +28,11 @@ export function createWhatsAppIntegrationRoutes({ authenticate, requireAdministr
     catch (error) { res.status(error.status || 503).json({ error: 'No fue posible iniciar WhatsApp.' }); }
   });
   router.post('/disconnect', async (_req, res) => {
-    try { res.json(await worker('/disconnect', { method: 'POST', body: '{}' })); }
-    catch (error) { res.status(error.status || 503).json({ error: 'No fue posible desconectar WhatsApp.' }); }
+    try {
+      const result = await worker('/disconnect', { method: 'POST', body: '{}' });
+      await repository.clearConfiguration();
+      res.status(202).json({ ...result, selectedGroup: null, configurationReset: true });
+    } catch (error) { res.status(error.status || 503).json({ error: 'No fue posible desconectar WhatsApp.' }); }
   });
   router.get('/groups', async (_req, res) => {
     try { res.json(await worker('/groups')); }
