@@ -93,7 +93,7 @@ export default function HomePage() {
           <a href="#servicios">Servicios</a>
           <a href="#paquetes">Paquetes</a>
           <a href="#portafolio">Portafolio</a>
-          <a href="#nosotros">Nosotros</a>
+          <a href="#contacto">Nosotros</a>
           <a href="#contacto">Contacto</a>
         </nav>
         <a className="header-whatsapp" href="https://wa.me/50238165229" target="_blank" rel="noreferrer"><WhatsAppIcon /><span>(502) 3816-5229</span></a>
@@ -104,7 +104,6 @@ export default function HomePage() {
         <div className="hero-shade" />
         <div className="hero-rings"><i /><i /></div>
         <div className="hero-content">
-          <p className="hero-kicker">CREATIVIDAD CON PROPÓSITO</p>
           <h1>Haz que tu negocio<br />destaque en el<br /><em>mundo digital</em></h1>
           <p className="hero-description">Te ayudo a construir, gestionar y hacer crecer tu presencia<br className="desktop-break" /> en línea con estrategia, creatividad y análisis de resultados.</p>
           <div className="hero-actions">
@@ -161,11 +160,6 @@ export default function HomePage() {
           <div className="portfolio-image coffee" role="img" aria-label="Fotografía de café" />
         </div>
         <a className="portfolio-link" href="https://www.instagram.com/_jlcreativestudio/" target="_blank" rel="noreferrer">Ver portafolio <span>→</span></a>
-      </section>
-
-      <section className="about-section" id="nosotros">
-        <div><p className="section-label">NOSOTROS</p><h2>Ideas que cuentan<br />historias. Estrategias<br /><em>que generan resultados.</em></h2></div>
-        <p>En JL Creative Studio combinamos creatividad, estrategia y análisis para ayudar a las marcas a construir una presencia digital auténtica y crecer con intención.</p>
       </section>
 
       <footer className="site-footer" id="contacto">
