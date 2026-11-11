@@ -67,6 +67,7 @@ app.post('/disconnect', async (_req, res) => {
     await mkdir(authPath, { recursive: true });
 
     manualDisconnect = false;
+    status = 'disconnected';
     await startSocket();
     res.status(202).json({ status, message: 'Previous device unlinked; new QR pairing started.' });
   } catch {
