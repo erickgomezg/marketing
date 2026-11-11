@@ -23,7 +23,7 @@ let lifecycle = 0;
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'whatsapp-worker' }));
 app.use((req, res, next) => {
-  const supplied = req.get('authorization')?.replace(/^Bearer\\s+/i, '');
+  const supplied = req.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!supplied || supplied !== internalToken) return res.status(401).json({ error: 'Unauthorized' });
   next();
 });
