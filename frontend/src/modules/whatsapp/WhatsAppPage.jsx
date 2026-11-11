@@ -85,7 +85,7 @@ export default function WhatsAppPage() {
         </div>
         <div className="button-row">
           {!connected ? <button className="button-primary" disabled={busy || ['connecting', 'qr_required', 'reconnecting'].includes(connection?.status)} onClick={() => run(() => request('/connect', { method: 'POST' }), 'Solicitud de conexión iniciada.')}> <Wifi size={16}/> Conectar WhatsApp</button> :
-            <button className="button-secondary" disabled={busy} onClick={() => run(() => request('/disconnect', { method: 'POST' }), 'WhatsApp desconectado.')}><WifiOff size={16}/> Desconectar</button>}
+            <button className="button-secondary" disabled={busy} onClick={() => run(() => request('/disconnect', { method: 'POST' }), 'Número desvinculado. Generando un nuevo código QR...')}><WifiOff size={16}/> Desconectar</button>}
           <button className="button-secondary" disabled={busy} onClick={loadStatus}><RefreshCw size={16}/> Actualizar estado</button>
         </div>
       </Card>
