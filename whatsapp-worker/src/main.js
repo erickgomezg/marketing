@@ -1,6 +1,7 @@
 import express from 'express';
 import pino from 'pino';
 import QRCode from 'qrcode';
+import { mkdir, rm } from 'node:fs/promises';
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from '@whiskeysockets/baileys';
 
 const app = express();
@@ -18,28 +19,65 @@ let lastError = null;
 let reconnectTimer;
 let starting = false;
 let manualDisconnect = false;
+let lifecycle = 0;
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'whatsapp-worker' }));
-
 app.use((req, res, next) => {
-  const supplied = req.get('authorization')?.replace(/^Bearer\s+/i, '');
+  const supplied = req.get('authorization')?.replace(/^Bearer\\s+/i, '');
   if (!supplied || supplied !== internalToken) return res.status(401).json({ error: 'Unauthorized' });
   next();
 });
 
 app.get('/status', (_req, res) => res.json({ status, phoneNumber, qr: qrDataUrl, lastError }));
 app.post('/connect', async (_req, res) => {
-  try { await startSocket(); res.status(202).json({ status }); }
-  catch { res.status(503).json({ error: 'Unable to start WhatsApp connection' }); }
+  try {
+    await startSocket();
+    res.status(202).json({ status });
+  } catch {
+    res.status(503).json({ error: 'Unable to start WhatsApp connection' });
+  }
 });
+
+// Desvincula el dispositivo anterior, elimina sus credenciales locales y comienza
+// inmediatamente un nuevo flujo de emparejamiento para generar otro QR.
 app.post('/disconnect', async (_req, res) => {
-  clearTimeout(reconnectTimer);
-  manualDisconnect = true;
-  if (socket) { socket.end(undefined); socket = undefined; }
-  starting = false;
-  status = 'disconnected'; qrDataUrl = null; phoneNumber = null;
-  res.json({ status });
+  try {
+    clearTimeout(reconnectTimer);
+    manualDisconnect = true;
+    lifecycle += 1;
+    const previousSocket = socket;
+    socket = undefined;
+    starting = false;
+    qrDataUrl = null;
+    phoneNumber = null;
+    lastError = null;
+    status = 'connecting';
+
+    if (previousSocket) {
+      try {
+        await previousSocket.logout();
+      } catch {
+        try { previousSocket.end(undefined); } catch {}
+      }
+    }
+
+    // El volumen persiste entre despliegues, pero un cambio explícito de número
+    // debe iniciar con un estado de autenticación limpio.
+    await rm(authPath, { recursive: true, force: true });
+    await mkdir(authPath, { recursive: true });
+
+    manualDisconnect = false;
+    await startSocket();
+    res.status(202).json({ status, message: 'Previous device unlinked; new QR pairing started.' });
+  } catch {
+    manualDisconnect = false;
+    starting = false;
+    status = 'error';
+    lastError = 'PAIRING_RESET_FAILED';
+    res.status(503).json({ error: 'Unable to reset WhatsApp pairing. Retry the connection.' });
+  }
 });
+
 app.get('/groups', async (_req, res) => {
   if (status !== 'connected' || !socket) return res.status(409).json({ error: 'WhatsApp is not connected' });
   try {
@@ -58,12 +96,16 @@ app.post('/send', async (req, res) => {
 });
 
 async function startSocket() {
-  if (starting || status === 'connected' || status === 'connecting') return;
+  if (starting || status === 'connected' || status === 'connecting' || status === 'qr_required') return;
   manualDisconnect = false;
-  starting = true; status = 'connecting'; lastError = null;
+  starting = true;
+  status = 'connecting';
+  lastError = null;
+  const thisLifecycle = lifecycle;
   try {
     const { state, saveCreds } = await useMultiFileAuthState(authPath);
     const { version } = await fetchLatestBaileysVersion();
+    if (thisLifecycle !== lifecycle) return;
     const client = makeWASocket({
       version, auth: state, logger: pino({ level: 'silent' }),
       browser: ['AI Marketing Manager', 'Chrome', '1.0.0'],
@@ -73,6 +115,8 @@ async function startSocket() {
     socket = client;
     client.ev.on('creds.update', saveCreds);
     client.ev.on('connection.update', async update => {
+      // Ignora eventos tardíos del socket que acabamos de desvincular.
+      if (socket !== client || thisLifecycle !== lifecycle) return;
       if (update.qr) {
         try { qrDataUrl = await QRCode.toDataURL(update.qr); status = 'qr_required'; }
         catch { lastError = 'QR_GENERATION_FAILED'; status = 'error'; }
@@ -93,7 +137,9 @@ async function startSocket() {
       }
     });
   } catch (error) {
-    starting = false; status = 'error'; lastError = error?.code || 'CONNECTION_START_FAILED';
+    if (thisLifecycle === lifecycle) {
+      starting = false; status = 'error'; lastError = error?.code || 'CONNECTION_START_FAILED';
+    }
     throw error;
   }
 }
