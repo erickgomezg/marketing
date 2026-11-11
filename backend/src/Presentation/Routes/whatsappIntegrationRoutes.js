@@ -7,7 +7,7 @@ export function createWhatsAppIntegrationRoutes({ authenticate, requireAdministr
   async function worker(path, options = {}) {
     if (!token || token.length < 32) throw Object.assign(new Error('WhatsApp integration unavailable'), { status: 503 });
     const response = await fetch(`${workerUrl}${path}`, {
-      ...options, signal: AbortSignal.timeout(10000),
+      ...options, signal: AbortSignal.timeout(path === '/disconnect' ? 30000 : 10000),
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', ...(options.headers || {}) },
     });
     const data = await response.json().catch(() => ({}));
